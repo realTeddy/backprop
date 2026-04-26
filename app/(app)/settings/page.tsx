@@ -9,6 +9,7 @@ import {
 import {
   clearKeys,
   loadKeys,
+  onKeysChange,
   saveKeys,
   type StoredKeys,
 } from "@/lib/ai/keys";
@@ -19,7 +20,6 @@ const PROVIDERS: ProviderId[] = ["openai", "anthropic", "google"];
 export default function SettingsPage() {
   const [keys, setKeys] = useState<StoredKeys>({});
   const [hydrated, setHydrated] = useState(false);
-  const [savedAt, setSavedAt] = useState<number | null>(null);
   const [isOwner, setIsOwner] = useState(false);
 
   useEffect(() => {
@@ -30,22 +30,36 @@ export default function SettingsPage() {
       .then((j: { isOwner?: boolean } | null) => {
         if (j?.isOwner) setIsOwner(true);
       });
+    return onKeysChange(() => setKeys(loadKeys()));
   }, []);
 
-  function update(provider: ProviderId, patch: Partial<{ apiKey: string; model: string }>) {
+  // Re-read localStorage and merge before each write so changes from sibling
+  // components (e.g. CopilotConnect) aren't clobbered. Then write through
+  // immediately — no batched Save button.
+  function mutate(fn: (current: StoredKeys) => StoredKeys) {
     setKeys((prev) => {
-      const existing = prev[provider] ?? { apiKey: "", model: PROVIDER_CATALOG[provider].models[0]!.id };
-      return { ...prev, [provider]: { ...existing, ...patch } };
+      const fresh = loadKeys();
+      const next = fn({ ...fresh, ...prev });
+      saveKeys(next);
+      return next;
+    });
+  }
+
+  function update(
+    provider: ProviderId,
+    patch: Partial<{ apiKey: string; model: string }>,
+  ) {
+    mutate((current) => {
+      const existing = current[provider] ?? {
+        apiKey: "",
+        model: PROVIDER_CATALOG[provider].models[0]!.id,
+      };
+      return { ...current, [provider]: { ...existing, ...patch } };
     });
   }
 
   function setDefault(provider: ProviderId) {
-    setKeys((prev) => ({ ...prev, default: provider }));
-  }
-
-  function persist() {
-    saveKeys(keys);
-    setSavedAt(Date.now());
+    mutate((current) => ({ ...current, default: provider }));
   }
 
   function clearAll() {
@@ -60,9 +74,8 @@ export default function SettingsPage() {
         <h1 className="text-3xl font-semibold">Settings</h1>
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
           API keys live in this browser&apos;s <code>localStorage</code> only.
-          They are sent with each tutor request to a thin proxy and never
-          stored on the server. You will need to paste them again on a new
-          device.
+          Changes save automatically. Keys are sent with each tutor request
+          to a thin proxy and never stored on the server.
         </p>
         <p className="text-sm">
           <Link href="/settings/data" className="underline">
@@ -88,14 +101,7 @@ export default function SettingsPage() {
 
           {isOwner && <CopilotConnect />}
 
-          <div className="flex items-center gap-3 pt-4">
-            <button
-              type="button"
-              onClick={persist}
-              className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200"
-            >
-              Save
-            </button>
+          <div className="pt-4">
             <button
               type="button"
               onClick={clearAll}
@@ -103,11 +109,6 @@ export default function SettingsPage() {
             >
               Clear all
             </button>
-            {savedAt && (
-              <span className="text-sm text-emerald-600 dark:text-emerald-400">
-                Saved
-              </span>
-            )}
           </div>
         </div>
       )}

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { COPILOT_MODELS } from "@/lib/ai/copilot";
-import { loadKeys, saveKeys } from "@/lib/ai/keys";
+import { loadKeys, onKeysChange, saveKeys } from "@/lib/ai/keys";
 
 type DeviceFlow = {
   device_code: string;
@@ -33,13 +33,18 @@ export function CopilotConnect() {
   const cancelRef = useRef(false);
 
   useEffect(() => {
-    const keys = loadKeys();
-    setHasToken(!!keys.copilot?.apiKey);
-    setToken(keys.copilot?.apiKey ?? null);
-    if (keys.copilot?.model) setModel(keys.copilot.model);
-    setIsDefault(keys.default === "copilot");
+    const sync = () => {
+      const keys = loadKeys();
+      setHasToken(!!keys.copilot?.apiKey);
+      setToken(keys.copilot?.apiKey ?? null);
+      if (keys.copilot?.model) setModel(keys.copilot.model);
+      setIsDefault(keys.default === "copilot");
+    };
+    sync();
+    const unsubscribe = onKeysChange(sync);
     return () => {
       cancelRef.current = true;
+      unsubscribe();
     };
   }, []);
 
