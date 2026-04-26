@@ -1,0 +1,230 @@
+# Backprop curriculum graph — v0
+#
+# Topics are nodes in a DAG. Each topic lists prerequisites (other topic ids)
+# that must be reached before the tutor will introduce it. Tracks: `math`
+# topics build conceptual foundations; `code` topics put the math to work in
+# small, growing projects following Karpathy's Zero-to-Hero arc.
+#
+# This is a first draft anchored to:
+#   - Karpathy, "Zero to Hero" (https://karpathy.ai/zero-to-hero.html)
+#   - 3Blue1Brown, "Neural networks" series
+#   - Deisenroth et al., *Mathematics for Machine Learning*
+#
+# Expect iteration once the owner starts learning and finds gaps.
+
+topics:
+  # --- Math: linear algebra ------------------------------------------------
+  - id: vectors-basics
+    title: Vectors and vector operations
+    track: math
+    prerequisites: []
+    summary: >
+      Vectors as ordered tuples and as geometric arrows. Addition, scalar
+      multiplication, dot product, norms, projections.
+    sources:
+      - "3Blue1Brown: Essence of linear algebra, ep. 1–2"
+      - "Deisenroth ch. 3.1–3.3"
+
+  - id: matrices-basics
+    title: Matrices and linear maps
+    track: math
+    prerequisites: [vectors-basics]
+    summary: >
+      Matrices as transformations of vector spaces. Composition by matrix
+      multiplication, identity, inverse, transpose.
+    sources:
+      - "3Blue1Brown: Essence of linear algebra, ep. 3–4"
+      - "Deisenroth ch. 2.2–2.3"
+
+  - id: matmul-shapes
+    title: Matrix multiplication, shapes, and broadcasting
+    track: math
+    prerequisites: [matrices-basics]
+    summary: >
+      Compatible shapes, batched matmul, the einsum mental model. Why most
+      neural-network bugs are shape bugs.
+
+  - id: eigendecomposition
+    title: Eigenvalues, eigenvectors, and diagonalization
+    track: math
+    prerequisites: [matmul-shapes]
+    summary: >
+      What eigenvectors mean geometrically, when a matrix is diagonalizable,
+      and why it matters for understanding repeated transformations.
+
+  - id: svd
+    title: Singular value decomposition
+    track: math
+    prerequisites: [eigendecomposition]
+    summary: >
+      Any matrix as rotation–scale–rotation. Low-rank approximation, the
+      connection to PCA, why SVD is the workhorse of practical linear
+      algebra.
+
+  # --- Math: calculus ------------------------------------------------------
+  - id: derivatives
+    title: Single-variable derivatives
+    track: math
+    prerequisites: []
+    summary: >
+      Rates of change as limits. Power, product, quotient, chain rules.
+      Reading a derivative as the slope of a tangent line.
+
+  - id: partial-derivatives
+    title: Partial derivatives and gradients
+    track: math
+    prerequisites: [derivatives, vectors-basics]
+    summary: >
+      Multivariable functions, partial derivatives, the gradient as the
+      direction of steepest ascent.
+
+  - id: chain-rule
+    title: The multivariable chain rule
+    track: math
+    prerequisites: [partial-derivatives]
+    summary: >
+      The chain rule for compositions of multivariable functions. The
+      computational engine behind backpropagation.
+
+  - id: jacobians
+    title: Jacobians and vector-valued derivatives
+    track: math
+    prerequisites: [chain-rule, matmul-shapes]
+    summary: >
+      The Jacobian matrix of a vector-valued function. How autograd composes
+      Jacobian-vector products.
+
+  # --- Math: probability ---------------------------------------------------
+  - id: prob-basics
+    title: Probability fundamentals
+    track: math
+    prerequisites: []
+    summary: >
+      Sample spaces, events, conditional probability, independence. Bayes'
+      rule.
+
+  - id: random-variables
+    title: Random variables and distributions
+    track: math
+    prerequisites: [prob-basics]
+    summary: >
+      Discrete vs continuous, PMFs and PDFs, expectation, variance. Bernoulli,
+      categorical, Gaussian.
+
+  - id: mle
+    title: Maximum likelihood estimation
+    track: math
+    prerequisites: [random-variables, derivatives]
+    summary: >
+      Likelihood functions, log-likelihood, MLE as the workhorse of fitting
+      models to data. The connection between MLE and cross-entropy.
+
+  # --- Math: optimization --------------------------------------------------
+  - id: gradient-descent
+    title: Gradient descent
+    track: math
+    prerequisites: [partial-derivatives]
+    summary: >
+      Following negative gradients to minimize a loss. Step size, why it
+      matters, what divergence looks like.
+
+  - id: sgd-and-friends
+    title: SGD, momentum, and Adam
+    track: math
+    prerequisites: [gradient-descent]
+    summary: >
+      Stochastic gradient descent, mini-batches, momentum, RMSProp, Adam.
+      What "the optimizer" is doing under the hood.
+
+  - id: convexity-intuition
+    title: Convexity, local minima, and saddles
+    track: math
+    prerequisites: [gradient-descent]
+    summary: >
+      Why convex problems are easy and neural-network losses aren't. Saddle
+      points and why high-dimensional loss landscapes are kinder than the
+      2D mental model suggests.
+
+  # --- Math: information theory (light) -----------------------------------
+  - id: entropy-cross-entropy
+    title: Entropy, cross-entropy, and KL divergence
+    track: math
+    prerequisites: [random-variables]
+    summary: >
+      Information content, the cross-entropy loss as a likelihood, KL
+      divergence between distributions.
+
+  # --- Code: project arc ---------------------------------------------------
+  - id: numpy-fluency
+    title: NumPy fluency
+    track: code
+    prerequisites: [matmul-shapes]
+    summary: >
+      Arrays, dtypes, broadcasting, vectorized operations. Reading and
+      writing idiomatic NumPy.
+    project: numpy-warmup
+
+  - id: backprop-by-hand
+    title: Backprop on a single neuron, by hand
+    track: code
+    prerequisites: [chain-rule, numpy-fluency]
+    summary: >
+      Karpathy's micrograd-style scalar autograd. Computational graph,
+      forward, backward, gradient checking.
+    project: micrograd-mini
+
+  - id: mlp-mnist
+    title: MNIST MLP — the "hello world" of neural nets
+    track: code
+    prerequisites: [backprop-by-hand, gradient-descent, mle, entropy-cross-entropy]
+    summary: >
+      Fully connected network on MNIST. Forward pass, backprop, training
+      loop, batching, learning-rate intuition.
+    project: mnist-mlp
+
+  - id: cnn-mnist
+    title: MNIST CNN (optional vision detour)
+    track: code
+    prerequisites: [mlp-mnist]
+    optional: true
+    summary: >
+      Convolutional layers, pooling, why CNNs are a good fit for images.
+      Skippable if the goal is purely transformers.
+    project: mnist-cnn
+
+  - id: bigram-lm
+    title: Bigram character-level language model
+    track: code
+    prerequisites: [mlp-mnist]
+    summary: >
+      Counting bigrams, sampling from a categorical, evaluating with
+      negative log-likelihood. The simplest thing that could possibly work.
+    project: makemore-bigram
+
+  - id: mlp-lm
+    title: MLP character-level language model
+    track: code
+    prerequisites: [bigram-lm, sgd-and-friends]
+    summary: >
+      Replacing counts with a small MLP that takes a context window and
+      predicts the next character. Embeddings introduced.
+    project: makemore-mlp
+
+  - id: self-attention
+    title: Self-attention from scratch
+    track: code
+    prerequisites: [mlp-lm, jacobians]
+    summary: >
+      Queries, keys, values. Why attention is permutation-equivariant.
+      Causal masking. Implementing attention in raw PyTorch / NumPy.
+    project: attention-from-scratch
+
+  - id: small-gpt
+    title: Small GPT (final project)
+    track: code
+    prerequisites: [self-attention, sgd-and-friends, svd]
+    summary: >
+      Assemble multi-head attention, residuals, layer norm, and a training
+      loop into a working char-level GPT. Train on a small corpus and
+      sample from it.
+    project: small-gpt
