@@ -26,6 +26,13 @@ export default async function DashboardPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  const { data: onboarding } = await supabase
+    .from("onboarding_responses")
+    .select("completed_at")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (!onboarding?.completed_at) redirect("/onboarding");
+
   const curriculum = loadCurriculum();
   const rows = await fetchMastery(user.id);
   const mastery = masteryMap(rows);

@@ -139,7 +139,52 @@ export async function resolveCopilotModel(args: {
   return provider.chat(args.model);
 }
 
+/**
+ * Static fallback list. Copilot's set of available models changes on
+ * GitHub's schedule; the live list is fetched via listCopilotModels().
+ * The catalog only matters as a fallback if that fetch fails.
+ */
 export const COPILOT_MODELS: { id: string; label: string }[] = [
-  { id: "gpt-4o", label: "GPT-4o (via Copilot)" },
-  { id: "claude-3.5-sonnet", label: "Claude 3.5 Sonnet (via Copilot)" },
+  { id: "gpt-5", label: "GPT-5 (via Copilot)" },
+  { id: "claude-sonnet-4.5", label: "Claude Sonnet 4.5 (via Copilot)" },
 ];
+
+type CopilotModelInfo = {
+  id: string;
+  name?: string;
+  vendor?: string;
+  capabilities?: { type?: string };
+  model_picker_enabled?: boolean;
+};
+
+/**
+ * Live model list from `https://api.githubcopilot.com/models`. Filters to
+ * chat-capable models that Copilot's own picker exposes, so the dropdown
+ * matches what you'd see in VS Code.
+ */
+export async function listCopilotModels(
+  githubAccessToken: string,
+): Promise<{ id: string; label: string }[]> {
+  const session = await getSessionToken(githubAccessToken);
+  const res = await fetch(`${COPILOT_BASE_URL}/models`, {
+    headers: {
+      Authorization: `Bearer ${session.token}`,
+      Accept: "application/json",
+      ...EDITOR_HEADERS,
+    },
+  });
+  if (!res.ok) {
+    throw new Error(`copilot /models failed: ${res.status}`);
+  }
+  const json = (await res.json()) as { data?: CopilotModelInfo[] };
+  const data = json.data ?? [];
+  return data
+    .filter((m) => m.capabilities?.type !== "embeddings")
+    .filter((m) => m.model_picker_enabled !== false)
+    .map((m) => ({
+      id: m.id,
+      label: m.name
+        ? `${m.name}${m.vendor ? ` (${m.vendor})` : ""}`
+        : m.id,
+    }));
+}

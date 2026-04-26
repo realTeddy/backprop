@@ -68,14 +68,19 @@ export async function POST(req: Request) {
     }
   }
 
-  const knownModels = PROVIDER_CATALOG[provider as ProviderId].models.map(
-    (m) => m.id,
-  );
-  if (!knownModels.includes(model)) {
-    return Response.json(
-      { error: `Unknown model "${model}" for provider "${provider}"` },
-      { status: 400 },
+  // Copilot's model list is fetched live from api.githubcopilot.com/models,
+  // so we trust the client's choice; for other providers we validate against
+  // the editable PROVIDER_CATALOG to catch typos.
+  if (provider !== "copilot") {
+    const knownModels = PROVIDER_CATALOG[provider as ProviderId].models.map(
+      (m) => m.id,
     );
+    if (!knownModels.includes(model)) {
+      return Response.json(
+        { error: `Unknown model "${model}" for provider "${provider}"` },
+        { status: 400 },
+      );
+    }
   }
 
   const [{ data: onboardingRow }, { data: masteryRows }] = await Promise.all([

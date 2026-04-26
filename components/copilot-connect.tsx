@@ -19,22 +19,62 @@ type Status =
   | "connected"
   | "error";
 
+type Model = { id: string; label: string };
+
 export function CopilotConnect() {
   const [status, setStatus] = useState<Status>("idle");
   const [flow, setFlow] = useState<DeviceFlow | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hasToken, setHasToken] = useState(false);
+  const [token, setToken] = useState<string | null>(null);
   const [model, setModel] = useState(COPILOT_MODELS[0]!.id);
+  const [models, setModels] = useState<Model[]>(COPILOT_MODELS);
+  const [isDefault, setIsDefault] = useState(false);
   const cancelRef = useRef(false);
 
   useEffect(() => {
     const keys = loadKeys();
     setHasToken(!!keys.copilot?.apiKey);
+    setToken(keys.copilot?.apiKey ?? null);
     if (keys.copilot?.model) setModel(keys.copilot.model);
+    setIsDefault(keys.default === "copilot");
     return () => {
       cancelRef.current = true;
     };
   }, []);
+
+  // Refresh the model list whenever we have a token. Falls back to the
+  // hardcoded COPILOT_MODELS if the API call fails.
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+    void fetch("/api/copilot/models", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ githubAccessToken: token }),
+    })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((json: { models?: Model[] }) => {
+        if (cancelled || !json.models?.length) return;
+        setModels(json.models);
+        // If the saved model isn't in the live list, snap to the first one.
+        if (!json.models.find((m) => m.id === model)) {
+          const next = json.models[0]!.id;
+          setModel(next);
+          const keys = loadKeys();
+          if (keys.copilot) {
+            keys.copilot.model = next;
+            saveKeys(keys);
+          }
+        }
+      })
+      .catch(() => {
+        // Stick with the hardcoded fallback list; not fatal.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [token, model]);
 
   async function start() {
     setStatus("starting");
@@ -69,7 +109,15 @@ export function CopilotConnect() {
       if (body.kind === "ok") {
         const keys = loadKeys();
         keys.copilot = { apiKey: body.access_token, model };
+        // Auto-set Copilot as the default if no provider is currently the
+        // default — otherwise the /learn page would show "no API key
+        // configured" even though Copilot is connected.
+        if (!keys.default) {
+          keys.default = "copilot";
+          setIsDefault(true);
+        }
         saveKeys(keys);
+        setToken(body.access_token);
         setHasToken(true);
         setStatus("connected");
         setFlow(null);
@@ -90,6 +138,8 @@ export function CopilotConnect() {
     if (keys.default === "copilot") delete keys.default;
     saveKeys(keys);
     setHasToken(false);
+    setToken(null);
+    setIsDefault(false);
     setStatus("idle");
   }
 
@@ -102,11 +152,31 @@ export function CopilotConnect() {
     }
   }
 
+  function setDefault() {
+    const keys = loadKeys();
+    keys.default = "copilot";
+    saveKeys(keys);
+    setIsDefault(true);
+  }
+
   return (
     <section className="rounded-lg border border-neutral-300 p-5 dark:border-neutral-700">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-medium">GitHub Copilot</h2>
-        <span className="text-xs text-neutral-500">Owner-only</span>
+        <div className="flex items-center gap-3">
+          {hasToken && (
+            <label className="flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-400">
+              <input
+                type="radio"
+                name="default-provider"
+                checked={isDefault}
+                onChange={setDefault}
+              />
+              Default
+            </label>
+          )}
+          <span className="text-xs text-neutral-500">Owner-only</span>
+        </div>
       </div>
       <p className="mt-2 text-xs text-neutral-600 dark:text-neutral-400">
         Connects via GitHub&apos;s OAuth device flow. The access token is
@@ -123,7 +193,7 @@ export function CopilotConnect() {
               onChange={(e) => setModelAndPersist(e.target.value)}
               className="rounded border border-neutral-300 bg-white px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
             >
-              {COPILOT_MODELS.map((m) => (
+              {models.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.label}
                 </option>

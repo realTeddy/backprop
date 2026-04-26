@@ -13,9 +13,10 @@ export type TutorModelChoice = {
 };
 
 /**
- * Catalog the providers and the model ids the user can pick from. Kept
- * intentionally short — the goal is the cheapest and the most-capable
- * option for each provider, not exhaustive coverage.
+ * Catalog the providers and the model ids the user can pick from. Edit
+ * this file to add or remove models as the providers ship new ones — the
+ * tutor route validates the chosen model id against this catalog before
+ * forwarding the request.
  */
 export const PROVIDER_CATALOG: Record<
   ProviderId,
@@ -24,8 +25,10 @@ export const PROVIDER_CATALOG: Record<
   openai: {
     label: "OpenAI",
     models: [
-      { id: "gpt-4o", label: "GPT-4o" },
-      { id: "gpt-4o-mini", label: "GPT-4o mini" },
+      { id: "gpt-5", label: "GPT-5" },
+      { id: "gpt-5-mini", label: "GPT-5 mini" },
+      { id: "gpt-4.1", label: "GPT-4.1" },
+      { id: "o3", label: "o3 (reasoning)" },
     ],
   },
   anthropic: {
@@ -39,8 +42,8 @@ export const PROVIDER_CATALOG: Record<
   google: {
     label: "Google",
     models: [
-      { id: "gemini-1.5-pro", label: "Gemini 1.5 Pro" },
-      { id: "gemini-1.5-flash", label: "Gemini 1.5 Flash" },
+      { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
+      { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
     ],
   },
   copilot: {
