@@ -35,6 +35,25 @@ export function TutorChat(props: {
     if (!choice) return null;
     return new DefaultChatTransport({
       api: "/api/tutor",
+      // If the route returns HTML (e.g. Next's 404/500 page) or a JSON
+      // error envelope, throw a real Error here so useChat surfaces it
+      // through `error` instead of trying to interpret HTML as a stream.
+      fetch: async (input, init) => {
+        const res = await fetch(input, init);
+        const contentType = res.headers.get("content-type") ?? "";
+        if (!res.ok || !contentType.includes("text/event-stream")) {
+          const body = await res.clone().text();
+          let message = `Tutor request failed (HTTP ${res.status}).`;
+          try {
+            const json = JSON.parse(body) as { error?: unknown };
+            if (typeof json.error === "string") message = json.error;
+          } catch {
+            // Body wasn't JSON — leave the generic HTTP-status message.
+          }
+          throw new Error(message);
+        }
+        return res;
+      },
       body: {
         provider: choice.provider,
         model: choice.model,

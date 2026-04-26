@@ -43,6 +43,18 @@ function extractText(message: UIMessage): string {
 }
 
 export async function POST(req: Request) {
+  try {
+    return await handle(req);
+  } catch (err) {
+    console.error("[tutor] unhandled", err);
+    return Response.json(
+      { error: (err as Error).message ?? "Tutor request failed." },
+      { status: 500 },
+    );
+  }
+}
+
+async function handle(req: Request) {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -141,6 +153,9 @@ export async function POST(req: Request) {
     messages: modelMessages,
     tools,
     stopWhen: stepCountIs(5),
+    onError({ error }) {
+      console.error("[tutor] streamText error", error);
+    },
     async onFinish({ text }) {
       if (!resolvedSessionId) return;
       try {
@@ -181,5 +196,12 @@ export async function POST(req: Request) {
     },
   });
 
-  return result.toUIMessageStreamResponse();
+  // Forward backend errors through the UI message stream so the client
+  // shows a real message instead of disconnecting silently.
+  return result.toUIMessageStreamResponse({
+    onError(error) {
+      const e = error as Error;
+      return e?.message ?? "Tutor request failed.";
+    },
+  });
 }
