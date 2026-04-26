@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { DefaultChatTransport } from "ai";
 import { useChat } from "@ai-sdk/react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { activeChoice, loadKeys } from "@/lib/ai/keys";
 import type { ProviderId } from "@/lib/ai/providers";
 
@@ -21,61 +22,61 @@ export function TutorChat(props: {
     apiKey: string;
   } | null>(null);
   const [hydrated, setHydrated] = useState(false);
-  const sessionIdRef = useRef<string | null>(null);
-  if (sessionIdRef.current === null && typeof crypto !== "undefined") {
-    sessionIdRef.current = crypto.randomUUID();
-  }
+  const [sessionId] = useState(() =>
+    typeof crypto !== "undefined" ? crypto.randomUUID() : null,
+  );
 
   useEffect(() => {
     setChoice(activeChoice(loadKeys()));
     setHydrated(true);
   }, []);
 
-  const body = useMemo(
-    () =>
-      choice
-        ? {
-            provider: choice.provider,
-            model: choice.model,
-            apiKey: choice.apiKey,
-            mode,
-            topicId: topicId ?? null,
-            sessionId: sessionIdRef.current,
-          }
-        : undefined,
-    [choice, mode, topicId],
-  );
+  const transport = useMemo(() => {
+    if (!choice) return null;
+    return new DefaultChatTransport({
+      api: "/api/tutor",
+      body: {
+        provider: choice.provider,
+        model: choice.model,
+        apiKey: choice.apiKey,
+        mode,
+        topicId: topicId ?? null,
+        sessionId,
+      },
+    });
+  }, [choice, mode, topicId, sessionId]);
 
-  const {
-    messages,
-    input,
-    handleInputChange,
-    handleSubmit,
-    status,
-    error,
-    append,
-  } = useChat({
-    api: "/api/tutor",
-    body,
+  const { messages, sendMessage, status, error } = useChat({
+    ...(transport ? { transport } : {}),
   });
+
+  const [input, setInput] = useState("");
 
   // Kick the session off with an initial user message once we have a key.
   const [seeded, setSeeded] = useState(false);
   useEffect(() => {
     if (!hydrated || !choice || seeded || !initialUserMessage) return;
     setSeeded(true);
-    void append({ role: "user", content: initialUserMessage });
-  }, [hydrated, choice, seeded, initialUserMessage, append]);
+    void sendMessage({ text: initialUserMessage });
+  }, [hydrated, choice, seeded, initialUserMessage, sendMessage]);
 
-  // Surface the latest assistant message text to a parent (used to detect
-  // diagnostic completion in the onboarding flow).
   useEffect(() => {
     if (!onAssistantMessage) return;
     const last = messages[messages.length - 1];
-    if (last?.role === "assistant" && typeof last.content === "string") {
-      onAssistantMessage(last.content);
-    }
+    if (last?.role !== "assistant") return;
+    const text = last.parts
+      .filter((p): p is { type: "text"; text: string } => p.type === "text")
+      .map((p) => p.text)
+      .join("");
+    if (text) onAssistantMessage(text);
   }, [messages, onAssistantMessage]);
+
+  function onSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!input.trim()) return;
+    void sendMessage({ text: input });
+    setInput("");
+  }
 
   if (!hydrated) {
     return <p className="text-sm text-neutral-500">Loading…</p>;
@@ -97,9 +98,16 @@ export function TutorChat(props: {
     <div className="flex flex-col gap-4">
       <div className="space-y-4">
         {messages.map((m) => (
-          <Message key={m.id} role={m.role} content={m.content} />
+          <Message
+            key={m.id}
+            role={m.role}
+            text={m.parts
+              .filter((p): p is { type: "text"; text: string } => p.type === "text")
+              .map((p) => p.text)
+              .join("")}
+          />
         ))}
-        {status === "streaming" && (
+        {(status === "submitted" || status === "streaming") && (
           <p className="text-xs text-neutral-500">…</p>
         )}
       </div>
@@ -111,12 +119,12 @@ export function TutorChat(props: {
       )}
 
       <form
-        onSubmit={handleSubmit}
+        onSubmit={onSubmit}
         className="flex items-end gap-2 border-t border-neutral-200 pt-4 dark:border-neutral-800"
       >
         <textarea
           value={input}
-          onChange={handleInputChange}
+          onChange={(e) => setInput(e.target.value)}
           placeholder="Reply…"
           rows={2}
           className="flex-1 resize-y rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
@@ -129,7 +137,9 @@ export function TutorChat(props: {
         />
         <button
           type="submit"
-          disabled={status === "streaming" || !input.trim()}
+          disabled={
+            status === "submitted" || status === "streaming" || !input.trim()
+          }
           className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-50 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200"
         >
           Send
@@ -139,14 +149,7 @@ export function TutorChat(props: {
   );
 }
 
-function Message({
-  role,
-  content,
-}: {
-  role: string;
-  content: string | unknown;
-}) {
-  const text = typeof content === "string" ? content : JSON.stringify(content);
+function Message({ role, text }: { role: string; text: string }) {
   const isUser = role === "user";
   return (
     <div

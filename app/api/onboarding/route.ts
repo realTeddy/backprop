@@ -8,7 +8,7 @@ const Schema = z.object({
   timePerWeekMin: z.number().int().min(0).max(60 * 50),
   learningStyle: z.string().min(1).max(120),
   painPoints: z.array(z.string()).default([]),
-  priorKnowledge: z.record(z.unknown()).default({}),
+  priorKnowledge: z.record(z.string(), z.unknown()).default({}),
 });
 
 export async function POST(req: Request) {

@@ -20,7 +20,7 @@ export function buildTutorTools(args: {
     fetch_topic: tool({
       description:
         "Look up a topic by id and return its title, summary, prerequisites, and any associated coding project.",
-      parameters: z.object({
+      inputSchema: z.object({
         topic_id: z.string().describe("kebab-case topic id from the curriculum graph"),
       }),
       execute: async ({ topic_id }) => {
@@ -41,7 +41,7 @@ export function buildTutorTools(args: {
     update_mastery: tool({
       description:
         "Update the learner's mastery score for a topic after observing demonstrated proficiency. Score is 0-100; 70 unlocks downstream topics. Always include a short rationale (one sentence) the learner will see.",
-      parameters: z.object({
+      inputSchema: z.object({
         topic_id: z.string(),
         score: z.number().int().min(0).max(100),
         rationale: z.string().min(1).max(280),
@@ -70,7 +70,7 @@ export function buildTutorTools(args: {
     record_assessment: tool({
       description:
         "Record an assessment exchange (diagnostic, quiz, or exercise) so the learner can review history. Returns the assessment id.",
-      parameters: z.object({
+      inputSchema: z.object({
         topic_id: z.string(),
         kind: z.enum(["diagnostic", "quiz", "exercise"]),
         prompt: z.unknown(),

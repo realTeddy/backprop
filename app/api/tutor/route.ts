@@ -1,4 +1,9 @@
-import { streamText } from "ai";
+import {
+  convertToModelMessages,
+  stepCountIs,
+  streamText,
+  type UIMessage,
+} from "ai";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
@@ -23,13 +28,19 @@ const RequestSchema = z.object({
   mode: z.enum(["onboarding", "diagnostic", "teach"]).default("teach"),
   topicId: z.string().nullable().optional(),
   sessionId: z.string().uuid().optional(),
-  messages: z.array(
-    z.object({
-      role: z.enum(["user", "assistant", "system"]),
-      content: z.string(),
-    }),
-  ),
+  // useChat (v6) sends UIMessage[] with `parts: [{type: 'text', text}, ...]`.
+  // We accept it as `unknown[]` and cast — Zod schema for UIMessage is
+  // verbose and adds little value vs the type narrowing convertToModelMessages
+  // already performs.
+  messages: z.array(z.unknown()),
 });
+
+function extractText(message: UIMessage): string {
+  return message.parts
+    .filter((p): p is { type: "text"; text: string } => p.type === "text")
+    .map((p) => p.text)
+    .join("");
+}
 
 export async function POST(req: Request) {
   const supabase = await createSupabaseServerClient();
@@ -41,10 +52,11 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   const parsed = RequestSchema.safeParse(body);
   if (!parsed.success) {
-    return Response.json({ error: parsed.error.flatten() }, { status: 400 });
+    return Response.json({ error: z.treeifyError(parsed.error) }, { status: 400 });
   }
   const { provider, model, apiKey, messages, mode, topicId, sessionId } =
     parsed.data;
+  const uiMessages = messages as UIMessage[];
 
   if (provider === "copilot") {
     const owner = process.env.OWNER_EMAIL;
@@ -101,9 +113,6 @@ export async function POST(req: Request) {
   const languageModel = await resolveModel({ provider, model, apiKey });
   const tools = buildTutorTools({ supabase, userId: user.id });
 
-  // Ensure a tutor_sessions row exists so messages can attach to it. We
-  // upsert with ON CONFLICT DO NOTHING so repeated turns of the same
-  // conversation reuse the same session id.
   const resolvedSessionId = sessionId ?? null;
   if (resolvedSessionId) {
     await supabase.from("tutor_sessions").upsert(
@@ -116,14 +125,17 @@ export async function POST(req: Request) {
     );
   }
 
-  const lastUser = [...messages].reverse().find((m) => m.role === "user");
+  const lastUser = [...uiMessages].reverse().find((m) => m.role === "user");
+  const lastUserText = lastUser ? extractText(lastUser) : "";
+
+  const modelMessages = await convertToModelMessages(uiMessages);
 
   const result = streamText({
     model: languageModel,
     system,
-    messages,
+    messages: modelMessages,
     tools,
-    maxSteps: 5,
+    stopWhen: stepCountIs(5),
     async onFinish({ text }) {
       if (!resolvedSessionId) return;
       try {
@@ -135,8 +147,8 @@ export async function POST(req: Request) {
           provider?: string;
           model?: string;
         }> = [];
-        if (lastUser) {
-          const enc = encryptMessage(lastUser.content);
+        if (lastUserText) {
+          const enc = encryptMessage(lastUserText);
           inserts.push({
             session_id: resolvedSessionId,
             role: "user",
@@ -159,11 +171,10 @@ export async function POST(req: Request) {
           await supabase.from("tutor_messages").insert(inserts);
         }
       } catch (err) {
-        // Persistence errors must not fail the streaming response. Log only.
         console.error("[tutor] failed to persist messages", err);
       }
     },
   });
 
-  return result.toDataStreamResponse();
+  return result.toUIMessageStreamResponse();
 }
