@@ -2,8 +2,9 @@ import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenAI } from "@ai-sdk/openai";
 import type { LanguageModel } from "ai";
+import { COPILOT_MODELS, resolveCopilotModel } from "./copilot";
 
-export type ProviderId = "openai" | "anthropic" | "google";
+export type ProviderId = "openai" | "anthropic" | "google" | "copilot";
 
 export type TutorModelChoice = {
   provider: ProviderId;
@@ -42,9 +43,15 @@ export const PROVIDER_CATALOG: Record<
       { id: "gemini-1.5-flash", label: "Gemini 1.5 Flash" },
     ],
   },
+  copilot: {
+    label: "GitHub Copilot (owner-only)",
+    models: COPILOT_MODELS,
+  },
 };
 
-export function resolveModel(choice: TutorModelChoice): LanguageModel {
+export async function resolveModel(
+  choice: TutorModelChoice,
+): Promise<LanguageModel> {
   switch (choice.provider) {
     case "openai": {
       const openai = createOpenAI({ apiKey: choice.apiKey });
@@ -57,6 +64,14 @@ export function resolveModel(choice: TutorModelChoice): LanguageModel {
     case "google": {
       const google = createGoogleGenerativeAI({ apiKey: choice.apiKey });
       return google(choice.model);
+    }
+    case "copilot": {
+      // For Copilot, `apiKey` is the GitHub access token from the device
+      // flow. The Copilot adapter exchanges it for a session token.
+      return resolveCopilotModel({
+        githubAccessToken: choice.apiKey,
+        model: choice.model,
+      });
     }
   }
 }

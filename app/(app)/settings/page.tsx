@@ -12,6 +12,7 @@ import {
   saveKeys,
   type StoredKeys,
 } from "@/lib/ai/keys";
+import { CopilotConnect } from "@/components/copilot-connect";
 
 const PROVIDERS: ProviderId[] = ["openai", "anthropic", "google"];
 
@@ -19,10 +20,16 @@ export default function SettingsPage() {
   const [keys, setKeys] = useState<StoredKeys>({});
   const [hydrated, setHydrated] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [isOwner, setIsOwner] = useState(false);
 
   useEffect(() => {
     setKeys(loadKeys());
     setHydrated(true);
+    void fetch("/api/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: { isOwner?: boolean } | null) => {
+        if (j?.isOwner) setIsOwner(true);
+      });
   }, []);
 
   function update(provider: ProviderId, patch: Partial<{ apiKey: string; model: string }>) {
@@ -78,6 +85,8 @@ export default function SettingsPage() {
               onSetDefault={() => setDefault(p)}
             />
           ))}
+
+          {isOwner && <CopilotConnect />}
 
           <div className="flex items-center gap-3 pt-4">
             <button

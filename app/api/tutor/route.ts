@@ -17,7 +17,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const RequestSchema = z.object({
-  provider: z.enum(["openai", "anthropic", "google"]),
+  provider: z.enum(["openai", "anthropic", "google", "copilot"]),
   model: z.string(),
   apiKey: z.string().min(1),
   mode: z.enum(["onboarding", "diagnostic", "teach"]).default("teach"),
@@ -45,6 +45,16 @@ export async function POST(req: Request) {
   }
   const { provider, model, apiKey, messages, mode, topicId, sessionId } =
     parsed.data;
+
+  if (provider === "copilot") {
+    const owner = process.env.OWNER_EMAIL;
+    if (!owner || user.email !== owner) {
+      return Response.json(
+        { error: "Copilot is restricted to the project owner." },
+        { status: 403 },
+      );
+    }
+  }
 
   const knownModels = PROVIDER_CATALOG[provider as ProviderId].models.map(
     (m) => m.id,
@@ -88,7 +98,7 @@ export async function POST(req: Request) {
   };
 
   const system = buildTutorSystemPrompt(learner);
-  const languageModel = resolveModel({ provider, model, apiKey });
+  const languageModel = await resolveModel({ provider, model, apiKey });
   const tools = buildTutorTools({ supabase, userId: user.id });
 
   // Ensure a tutor_sessions row exists so messages can attach to it. We
