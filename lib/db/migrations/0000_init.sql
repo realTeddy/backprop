@@ -75,14 +75,17 @@ CREATE TABLE tutor_sessions (
 CREATE INDEX tutor_sessions_user_idx ON tutor_sessions(user_id);
 
 CREATE TABLE tutor_messages (
-  id         bigserial PRIMARY KEY,
-  session_id uuid NOT NULL REFERENCES tutor_sessions(id) ON DELETE CASCADE,
-  role       tutor_role NOT NULL,
-  ciphertext bytea NOT NULL,
-  nonce      bytea NOT NULL,
-  provider   text,
-  model      text,
-  created_at timestamptz NOT NULL DEFAULT now()
+  id            bigserial PRIMARY KEY,
+  session_id    uuid NOT NULL REFERENCES tutor_sessions(id) ON DELETE CASCADE,
+  role          tutor_role NOT NULL,
+  -- Both fields are stored as base64 text to avoid PostgREST's bytea
+  -- serialization quirks. ChaCha20-Poly1305 ciphertext (with appended
+  -- 16-byte tag) and a 12-byte nonce per message.
+  ciphertext_b64 text NOT NULL,
+  nonce_b64      text NOT NULL,
+  provider      text,
+  model         text,
+  created_at    timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE INDEX tutor_messages_session_idx ON tutor_messages(session_id);

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   PROVIDER_CATALOG,
@@ -55,6 +56,11 @@ export default function SettingsPage() {
           They are sent with each tutor request to a thin proxy and never
           stored on the server. You will need to paste them again on a new
           device.
+        </p>
+        <p className="text-sm">
+          <Link href="/settings/data" className="underline">
+            Export or delete your data →
+          </Link>
         </p>
       </header>
 

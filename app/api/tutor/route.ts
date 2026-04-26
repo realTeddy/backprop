@@ -11,6 +11,7 @@ import {
   buildTutorSystemPrompt,
   type LearnerContext,
 } from "@/lib/ai/tutor-system-prompt";
+import { encryptMessage } from "@/lib/crypto/conversations";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,6 +22,7 @@ const RequestSchema = z.object({
   apiKey: z.string().min(1),
   mode: z.enum(["onboarding", "diagnostic", "teach"]).default("teach"),
   topicId: z.string().nullable().optional(),
+  sessionId: z.string().uuid().optional(),
   messages: z.array(
     z.object({
       role: z.enum(["user", "assistant", "system"]),
@@ -41,10 +43,9 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return Response.json({ error: parsed.error.flatten() }, { status: 400 });
   }
-  const { provider, model, apiKey, messages, mode, topicId } = parsed.data;
+  const { provider, model, apiKey, messages, mode, topicId, sessionId } =
+    parsed.data;
 
-  // Validate model is one we list, so a typo doesn't silently send to a wrong
-  // endpoint.
   const knownModels = PROVIDER_CATALOG[provider as ProviderId].models.map(
     (m) => m.id,
   );
@@ -55,7 +56,6 @@ export async function POST(req: Request) {
     );
   }
 
-  // Pull learner context for the system prompt.
   const [{ data: onboardingRow }, { data: masteryRows }] = await Promise.all([
     supabase
       .from("onboarding_responses")
@@ -91,12 +91,68 @@ export async function POST(req: Request) {
   const languageModel = resolveModel({ provider, model, apiKey });
   const tools = buildTutorTools({ supabase, userId: user.id });
 
+  // Ensure a tutor_sessions row exists so messages can attach to it. We
+  // upsert with ON CONFLICT DO NOTHING so repeated turns of the same
+  // conversation reuse the same session id.
+  const resolvedSessionId = sessionId ?? null;
+  if (resolvedSessionId) {
+    await supabase.from("tutor_sessions").upsert(
+      {
+        id: resolvedSessionId,
+        user_id: user.id,
+        topic_id: topicId ?? null,
+      },
+      { onConflict: "id", ignoreDuplicates: true },
+    );
+  }
+
+  const lastUser = [...messages].reverse().find((m) => m.role === "user");
+
   const result = streamText({
     model: languageModel,
     system,
     messages,
     tools,
     maxSteps: 5,
+    async onFinish({ text }) {
+      if (!resolvedSessionId) return;
+      try {
+        const inserts: Array<{
+          session_id: string;
+          role: "user" | "assistant";
+          ciphertext_b64: string;
+          nonce_b64: string;
+          provider?: string;
+          model?: string;
+        }> = [];
+        if (lastUser) {
+          const enc = encryptMessage(lastUser.content);
+          inserts.push({
+            session_id: resolvedSessionId,
+            role: "user",
+            ciphertext_b64: enc.ciphertext.toString("base64"),
+            nonce_b64: enc.nonce.toString("base64"),
+          });
+        }
+        if (text) {
+          const enc = encryptMessage(text);
+          inserts.push({
+            session_id: resolvedSessionId,
+            role: "assistant",
+            ciphertext_b64: enc.ciphertext.toString("base64"),
+            nonce_b64: enc.nonce.toString("base64"),
+            provider,
+            model,
+          });
+        }
+        if (inserts.length > 0) {
+          await supabase.from("tutor_messages").insert(inserts);
+        }
+      } catch (err) {
+        // Persistence errors must not fail the streaming response. Log only.
+        console.error("[tutor] failed to persist messages", err);
+      }
+    },
   });
 
   return result.toDataStreamResponse();

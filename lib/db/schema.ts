@@ -1,6 +1,5 @@
 import {
   bigserial,
-  customType,
   integer,
   jsonb,
   pgEnum,
@@ -14,12 +13,6 @@ import {
 // Note: `auth.users` is managed by Supabase; we reference its `id` (uuid) but
 // do not declare it here. Foreign keys are enforced at the SQL level via the
 // migrations under `lib/db/migrations`.
-
-const bytea = customType<{ data: Uint8Array; default: false }>({
-  dataType() {
-    return "bytea";
-  },
-});
 
 export const assessmentKind = pgEnum("assessment_kind", [
   "diagnostic",
@@ -86,8 +79,8 @@ export const tutorMessages = pgTable("tutor_messages", {
   id: bigserial("id", { mode: "number" }).primaryKey(),
   sessionId: uuid("session_id").notNull(),
   role: tutorRole("role").notNull(),
-  ciphertext: bytea("ciphertext").notNull(),
-  nonce: bytea("nonce").notNull(),
+  ciphertextB64: text("ciphertext_b64").notNull(),
+  nonceB64: text("nonce_b64").notNull(),
   provider: text("provider"),
   model: text("model"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

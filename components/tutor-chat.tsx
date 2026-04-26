@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useChat } from "@ai-sdk/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { activeChoice, loadKeys } from "@/lib/ai/keys";
 import type { ProviderId } from "@/lib/ai/providers";
 
@@ -21,6 +21,10 @@ export function TutorChat(props: {
     apiKey: string;
   } | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  const sessionIdRef = useRef<string | null>(null);
+  if (sessionIdRef.current === null && typeof crypto !== "undefined") {
+    sessionIdRef.current = crypto.randomUUID();
+  }
 
   useEffect(() => {
     setChoice(activeChoice(loadKeys()));
@@ -36,6 +40,7 @@ export function TutorChat(props: {
             apiKey: choice.apiKey,
             mode,
             topicId: topicId ?? null,
+            sessionId: sessionIdRef.current,
           }
         : undefined,
     [choice, mode, topicId],
