@@ -1,0 +1,27 @@
+node_modules/
+.pnpm-store/
+.next/
+out/
+build/
+dist/
+
+# env
+.env
+.env.local
+.env.*.local
+
+# editor / os
+.DS_Store
+*.swp
+.vscode/
+.idea/
+
+# tests
+coverage/
+playwright-report/
+test-results/
+
+# misc
+*.log
+*.tsbuildinfo
+next-env.d.ts
