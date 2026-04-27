@@ -80,3 +80,4 @@ policy lives at [`docs/PRIVACY.md`](docs/PRIVACY.md) once Phase D ships.
 ## License
 
 Personal project — no license declared yet.
+
