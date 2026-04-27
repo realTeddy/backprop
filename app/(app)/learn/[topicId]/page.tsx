@@ -1,6 +1,8 @@
 import { notFound, redirect } from "next/navigation";
 import { loadCurriculum } from "@/lib/curriculum/graph";
 import { PROJECTS } from "@/lib/curriculum/projects";
+import { buildTutorChatResumeState, type StoredTutorMessage } from "@/lib/ai/tutor-history";
+import { decryptMessage } from "@/lib/crypto/conversations";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { TutorChat } from "@/components/tutor-chat";
 import { PyodideCell } from "@/components/pyodide-cell";
@@ -21,6 +23,52 @@ export default async function LearnTopicPage({
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+
+  const fallbackInitialUserMessage = `Let's work on "${topic.title}". Start where I am and adapt as we go.`;
+  const { data: latestSession } = await supabase
+    .from("tutor_sessions")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("topic_id", topic.id)
+    .order("started_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  let storedMessages: StoredTutorMessage[] = [];
+  if (latestSession) {
+    const { data: rows } = await supabase
+      .from("tutor_messages")
+      .select("id, role, ciphertext_b64, nonce_b64, created_at")
+      .eq("session_id", latestSession.id)
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true });
+
+    storedMessages = (rows ?? []).map((row) => {
+      let plaintext = "";
+      try {
+        plaintext = decryptMessage({
+          ciphertext: Buffer.from(row.ciphertext_b64, "base64"),
+          nonce: Buffer.from(row.nonce_b64, "base64"),
+        });
+      } catch (err) {
+        plaintext = `[previous message unavailable: ${
+          err instanceof Error ? err.message : "decryption failed"
+        }]`;
+      }
+
+      return {
+        id: row.id,
+        role: row.role,
+        plaintext,
+      };
+    });
+  }
+
+  const resumeState = buildTutorChatResumeState({
+    sessionId: latestSession?.id ?? null,
+    storedMessages,
+    fallbackInitialUserMessage,
+  });
 
   const project = topic.project ? PROJECTS[topic.project] : undefined;
 
@@ -46,7 +94,9 @@ export default async function LearnTopicPage({
         <TutorChat
           mode="teach"
           topicId={topic.id}
-          initialUserMessage={`Let's work on "${topic.title}". Start where I am and adapt as we go.`}
+          initialMessages={resumeState.initialMessages}
+          initialSessionId={resumeState.sessionId}
+          initialUserMessage={resumeState.initialUserMessage}
         />
       </section>
 

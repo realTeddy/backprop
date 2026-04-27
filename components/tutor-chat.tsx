@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { UIMessage } from "ai";
 import { useChat } from "@ai-sdk/react";
 import { useEffect, useState, type FormEvent } from "react";
 import { activeChoice, loadKeys } from "@/lib/ai/keys";
@@ -14,9 +15,18 @@ export function TutorChat(props: {
   mode: Mode;
   topicId?: string | null;
   initialUserMessage?: string;
+  initialMessages?: UIMessage[];
+  initialSessionId?: string | null;
   onAssistantMessage?: (text: string) => void;
 }) {
-  const { mode, topicId, initialUserMessage, onAssistantMessage } = props;
+  const {
+    mode,
+    topicId,
+    initialUserMessage,
+    initialMessages = [],
+    initialSessionId = null,
+    onAssistantMessage,
+  } = props;
   const [choice, setChoice] = useState<{
     provider: ProviderId;
     model: string;
@@ -24,7 +34,8 @@ export function TutorChat(props: {
   } | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [sessionId] = useState(() =>
-    typeof crypto !== "undefined" ? crypto.randomUUID() : null,
+    initialSessionId ??
+      (typeof crypto !== "undefined" ? crypto.randomUUID() : null),
   );
   const [choiceStore] = useState(() => {
     let current: {
@@ -59,7 +70,11 @@ export function TutorChat(props: {
     }),
   );
 
-  const { messages, sendMessage, status, error } = useChat({ transport });
+  const { messages, sendMessage, status, error } = useChat({
+    transport,
+    id: sessionId ?? undefined,
+    messages: initialMessages,
+  });
 
   const [input, setInput] = useState("");
 
