@@ -32,9 +32,6 @@ export default async function AppLayout({
               Settings
             </Link>
             <span className="text-neutral-400">|</span>
-            <span className="text-neutral-600 dark:text-neutral-400">
-              {user.email}
-            </span>
             <SignOutButton />
           </nav>
         </div>

@@ -12,3 +12,72 @@ body {
 body {
   @apply bg-white text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-100;
 }
+
+.tutor-richtext {
+  line-height: 1.65;
+}
+
+.tutor-richtext > :first-child {
+  margin-top: 0;
+}
+
+.tutor-richtext > :last-child {
+  margin-bottom: 0;
+}
+
+.tutor-richtext p,
+.tutor-richtext ul,
+.tutor-richtext ol,
+.tutor-richtext pre,
+.tutor-richtext blockquote {
+  margin: 0.75rem 0;
+}
+
+.tutor-richtext ul,
+.tutor-richtext ol {
+  padding-left: 1.25rem;
+}
+
+.tutor-richtext ul {
+  list-style: disc;
+}
+
+.tutor-richtext ol {
+  list-style: decimal;
+}
+
+.tutor-richtext li + li {
+  margin-top: 0.25rem;
+}
+
+.tutor-richtext a {
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.tutor-richtext code {
+  border-radius: 0.375rem;
+  background: color-mix(in srgb, currentColor 10%, transparent);
+  padding: 0.1rem 0.35rem;
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono",
+    Menlo, monospace;
+  font-size: 0.95em;
+}
+
+.tutor-richtext pre {
+  overflow-x: auto;
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, currentColor 10%, transparent);
+  padding: 0.75rem 1rem;
+}
+
+.tutor-richtext pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.tutor-richtext .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.25rem 0;
+}

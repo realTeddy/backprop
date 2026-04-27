@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { COPILOT_MODELS } from "@/lib/ai/copilot";
+import { beginPollingLifecycle } from "@/lib/ai/copilot-polling";
 import { loadKeys, onKeysChange, saveKeys } from "@/lib/ai/keys";
 
 type DeviceFlow = {
@@ -33,6 +34,7 @@ export function CopilotConnect() {
   const cancelRef = useRef(false);
 
   useEffect(() => {
+    const stopPolling = beginPollingLifecycle(cancelRef);
     const sync = () => {
       const keys = loadKeys();
       setHasToken(!!keys.copilot?.apiKey);
@@ -43,7 +45,7 @@ export function CopilotConnect() {
     sync();
     const unsubscribe = onKeysChange(sync);
     return () => {
-      cancelRef.current = true;
+      stopPolling();
       unsubscribe();
     };
   }, []);
