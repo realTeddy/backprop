@@ -12,7 +12,7 @@ describe("manifest", () => {
           "An adaptive AI tutor that takes you from linear algebra to building a small GPT from scratch.",
         start_url: "/",
         display: "standalone",
-        background_color: "#ffffff",
+        background_color: "#0a0a0a",
         theme_color: "#0a0a0a",
         icons: expect.arrayContaining([
           expect.objectContaining({
