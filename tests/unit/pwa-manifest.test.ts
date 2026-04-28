@@ -8,7 +8,7 @@ describe("manifest", () => {
       expect.objectContaining({
         name: "Backprop",
         short_name: "Backprop",
-        start_url: "/launch",
+        start_url: "/",
         display: "standalone",
         background_color: "#ffffff",
         theme_color: "#0a0a0a",

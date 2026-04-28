@@ -6,7 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "Backprop",
     description:
       "An adaptive AI tutor that takes you from linear algebra to building a small GPT from scratch.",
-    start_url: "/launch",
+    start_url: "/",
     display: "standalone",
     background_color: "#ffffff",
     theme_color: "#0a0a0a",
