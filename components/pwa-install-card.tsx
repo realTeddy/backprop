@@ -15,9 +15,8 @@ type BeforeInstallPromptEvent = Event & {
 export function PwaInstallCardView(props: {
   mode: InstallCardMode;
   onInstall?: () => Promise<void> | void;
-  dismissed?: boolean;
 }) {
-  const { mode, onInstall, dismissed = false } = props;
+  const { mode, onInstall } = props;
 
   if (mode === "hidden") return null;
 
@@ -39,11 +38,6 @@ export function PwaInstallCardView(props: {
               >
                 Install app
               </button>
-              {dismissed && (
-                <p className="text-xs text-neutral-500">
-                  You can install it later from your browser menu.
-                </p>
-              )}
             </div>
           </>
         ) : mode === "dismissed" ? (
@@ -65,6 +59,32 @@ export function PwaInstallCardView(props: {
       </div>
     </section>
   );
+}
+
+function reportInstallPromptError(error: Error) {
+  console.error("[pwa-install-card] failed to show install prompt", error);
+}
+
+export async function runInstallPrompt(args: {
+  promptEvent: BeforeInstallPromptEvent;
+  clearPrompt: () => void;
+  setDismissed: (dismissed: boolean) => void;
+  reportError?: (error: Error) => void;
+}) {
+  const { promptEvent, clearPrompt, setDismissed, reportError = reportInstallPromptError } = args;
+
+  try {
+    await promptEvent.prompt();
+    const { outcome } = await promptEvent.userChoice;
+    clearPrompt();
+    setDismissed(outcome === "dismissed");
+  } catch (error) {
+    const installError =
+      error instanceof Error ? error : new Error("Install prompt failed");
+    reportError(installError);
+    clearPrompt();
+    setDismissed(false);
+  }
 }
 
 export default function PwaInstallCard() {
@@ -132,17 +152,12 @@ export default function PwaInstallCard() {
 
   async function onInstall() {
     if (!promptEvent) return;
-    await promptEvent.prompt();
-    const { outcome } = await promptEvent.userChoice;
-    setPromptEvent(null);
-    setDismissed(outcome === "dismissed");
+    await runInstallPrompt({
+      promptEvent,
+      clearPrompt: () => setPromptEvent(null),
+      setDismissed,
+    });
   }
 
-  return (
-    <PwaInstallCardView
-      mode={mode}
-      onInstall={onInstall}
-      dismissed={dismissed}
-    />
-  );
+  return <PwaInstallCardView mode={mode} onInstall={onInstall} />;
 }

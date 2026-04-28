@@ -1,5 +1,5 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 describe("getInstallCardMode", () => {
   it("prefers a real install button when a deferred prompt exists", async () => {
@@ -96,5 +96,80 @@ describe("PwaInstallCardView", () => {
 
     expect(html).toContain("browser menu");
     expect(html).not.toContain("Install app");
+  });
+});
+
+describe("runInstallPrompt", () => {
+  it("clears the prompt without marking dismissal when install is accepted", async () => {
+    const { runInstallPrompt } = await import("@/components/pwa-install-card");
+    const clearPrompt = vi.fn();
+    const setDismissed = vi.fn();
+    const reportError = vi.fn();
+
+    await runInstallPrompt({
+      promptEvent: {
+        prompt: vi.fn().mockResolvedValue(undefined),
+        userChoice: Promise.resolve({
+          outcome: "accepted",
+          platform: "web",
+        }),
+      } as never,
+      clearPrompt,
+      setDismissed,
+      reportError,
+    });
+
+    expect(clearPrompt).toHaveBeenCalledTimes(1);
+    expect(setDismissed).toHaveBeenCalledWith(false);
+    expect(reportError).not.toHaveBeenCalled();
+  });
+
+  it("marks the card dismissed when the browser prompt is dismissed", async () => {
+    const { runInstallPrompt } = await import("@/components/pwa-install-card");
+    const clearPrompt = vi.fn();
+    const setDismissed = vi.fn();
+    const reportError = vi.fn();
+
+    await runInstallPrompt({
+      promptEvent: {
+        prompt: vi.fn().mockResolvedValue(undefined),
+        userChoice: Promise.resolve({
+          outcome: "dismissed",
+          platform: "web",
+        }),
+      } as never,
+      clearPrompt,
+      setDismissed,
+      reportError,
+    });
+
+    expect(clearPrompt).toHaveBeenCalledTimes(1);
+    expect(setDismissed).toHaveBeenCalledWith(true);
+    expect(reportError).not.toHaveBeenCalled();
+  });
+
+  it("logs and clears stale prompt state when prompt() throws", async () => {
+    const { runInstallPrompt } = await import("@/components/pwa-install-card");
+    const clearPrompt = vi.fn();
+    const setDismissed = vi.fn();
+    const reportError = vi.fn();
+    const error = new Error("prompt failed");
+
+    await runInstallPrompt({
+      promptEvent: {
+        prompt: vi.fn().mockRejectedValue(error),
+        userChoice: Promise.resolve({
+          outcome: "accepted",
+          platform: "web",
+        }),
+      } as never,
+      clearPrompt,
+      setDismissed,
+      reportError,
+    });
+
+    expect(reportError).toHaveBeenCalledWith(error);
+    expect(clearPrompt).toHaveBeenCalledTimes(1);
+    expect(setDismissed).toHaveBeenCalledWith(false);
   });
 });
