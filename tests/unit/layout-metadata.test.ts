@@ -1,3 +1,4 @@
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 describe("root layout metadata", () => {
@@ -16,5 +17,18 @@ describe("root layout metadata", () => {
     const { viewport } = await import("@/app/layout");
 
     expect(viewport.themeColor).toBe("#0a0a0a");
+  });
+
+  it("installs an early beforeinstallprompt capture script in the app shell", async () => {
+    const { default: RootLayout } = await import("@/app/layout");
+
+    const html = renderToStaticMarkup(
+      RootLayout({
+        children: "child",
+      }),
+    );
+
+    expect(html).toContain("beforeinstallprompt");
+    expect(html).toContain("__backpropInstallPromptEvent");
   });
 });

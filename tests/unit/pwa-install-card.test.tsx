@@ -7,9 +7,36 @@ type StorageStub = {
   removeItem: ReturnType<typeof vi.fn>;
 };
 
-function installWindow(localStorage: StorageStub) {
+function installWindow(args: {
+  localStorage: StorageStub;
+  userAgent?: string;
+  maxTouchPoints?: number;
+  standalone?: boolean;
+  capturedPromptEvent?: object | null;
+}) {
+  const {
+    localStorage,
+    userAgent = "Mozilla/5.0",
+    maxTouchPoints = 0,
+    standalone = false,
+    capturedPromptEvent = null,
+  } = args;
+
   Object.defineProperty(globalThis, "window", {
-    value: { localStorage },
+    value: {
+      localStorage,
+      navigator: {
+        userAgent,
+        maxTouchPoints,
+        standalone,
+      },
+      matchMedia: vi.fn().mockReturnValue({
+        matches: standalone,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      }),
+      __backpropInstallPromptEvent: capturedPromptEvent,
+    },
     configurable: true,
     writable: true,
   });
@@ -42,7 +69,7 @@ describe("install dismissal storage", () => {
       setItem: vi.fn(),
       removeItem: vi.fn(),
     };
-    installWindow(localStorage);
+    installWindow({ localStorage });
 
     const {
       loadInstallCardDismissed,
@@ -64,7 +91,7 @@ describe("install dismissal storage", () => {
       setItem: vi.fn(),
       removeItem: vi.fn(),
     };
-    installWindow(localStorage);
+    installWindow({ localStorage });
 
     const { clearInstallCardDismissed, loadInstallCardDismissed } = await import(
       "@/components/pwa-install-card"
@@ -175,6 +202,105 @@ describe("PwaInstallCardView", () => {
 
     expect(html).toContain("browser menu");
     expect(html).not.toContain("Install app");
+  });
+});
+
+describe("PwaInstallCard initial render", () => {
+  let originalWindow: typeof globalThis.window;
+
+  beforeEach(() => {
+    originalWindow = globalThis.window;
+  });
+
+  afterEach(() => {
+    if (typeof originalWindow === "undefined") {
+      Reflect.deleteProperty(globalThis, "window");
+    } else {
+      Object.defineProperty(globalThis, "window", {
+        value: originalWindow,
+        configurable: true,
+        writable: true,
+      });
+    }
+
+    vi.restoreAllMocks();
+  });
+
+  it("hides immediately when the app is already in standalone mode", async () => {
+    installWindow({
+      localStorage: {
+        getItem: vi.fn().mockReturnValue(null),
+        setItem: vi.fn(),
+        removeItem: vi.fn(),
+      },
+      standalone: true,
+    });
+
+    const { default: PwaInstallCard } = await import("@/components/pwa-install-card");
+
+    const html = renderToStaticMarkup(<PwaInstallCard />);
+
+    expect(html).toBe("");
+  });
+
+  it("restores dismissed guidance on the first render when the card was previously dismissed", async () => {
+    installWindow({
+      localStorage: {
+        getItem: vi.fn().mockReturnValue("1"),
+        setItem: vi.fn(),
+        removeItem: vi.fn(),
+      },
+    });
+
+    const { default: PwaInstallCard } = await import("@/components/pwa-install-card");
+
+    const html = renderToStaticMarkup(<PwaInstallCard />);
+
+    expect(html).toContain("browser menu");
+    expect(html).not.toContain("visited over HTTPS");
+  });
+
+  it("renders iPad install instructions immediately for touch-capable Macintosh user agents", async () => {
+    installWindow({
+      localStorage: {
+        getItem: vi.fn().mockReturnValue(null),
+        setItem: vi.fn(),
+        removeItem: vi.fn(),
+      },
+      userAgent:
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15",
+      maxTouchPoints: 5,
+    });
+
+    const { default: PwaInstallCard } = await import("@/components/pwa-install-card");
+
+    const html = renderToStaticMarkup(<PwaInstallCard />);
+
+    expect(html).toContain("Add to Home Screen");
+  });
+
+  it("renders an install button immediately when a prompt was captured before the component mounted", async () => {
+    installWindow({
+      localStorage: {
+        getItem: vi.fn().mockReturnValue("1"),
+        setItem: vi.fn(),
+        removeItem: vi.fn(),
+      },
+      capturedPromptEvent: {
+        prompt: vi.fn(),
+        userChoice: Promise.resolve({
+          outcome: "accepted",
+          platform: "web",
+        }),
+      },
+    });
+
+    const { default: PwaInstallCard } = await import("@/components/pwa-install-card");
+
+    const html = renderToStaticMarkup(<PwaInstallCard />);
+
+    expect(html).toContain("Install app");
+    expect(html).not.toContain("browser menu");
   });
 });
 

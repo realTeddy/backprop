@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import "katex/dist/katex.min.css";
+import { INSTALL_PROMPT_CAPTURE_SCRIPT } from "@/lib/pwa/install-prompt-capture";
 
 export const metadata: Metadata = {
   title: "Backprop — Learn the math and code behind modern AI",
@@ -25,7 +26,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <script
+          dangerouslySetInnerHTML={{ __html: INSTALL_PROMPT_CAPTURE_SCRIPT }}
+        />
+        {children}
+      </body>
     </html>
   );
 }

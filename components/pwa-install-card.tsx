@@ -14,6 +14,19 @@ type BeforeInstallPromptEvent = Event & {
 
 const DISMISSAL_STORAGE_KEY = "backprop.pwa.install-card-dismissed";
 
+type InstallCardState = {
+  promptEvent: BeforeInstallPromptEvent | null;
+  standalone: boolean;
+  ios: boolean;
+  dismissed: boolean;
+};
+
+declare global {
+  interface Window {
+    __backpropInstallPromptEvent?: BeforeInstallPromptEvent | null;
+  }
+}
+
 export function PwaInstallCardView(props: {
   mode: InstallCardMode;
   onInstall?: () => Promise<void> | void;
@@ -111,6 +124,51 @@ export function clearInstallCardDismissed(): void {
   }
 }
 
+function getCapturedInstallPrompt(): BeforeInstallPromptEvent | null {
+  if (typeof window === "undefined") return null;
+
+  return window.__backpropInstallPromptEvent ?? null;
+}
+
+function setCapturedInstallPrompt(promptEvent: BeforeInstallPromptEvent | null): void {
+  if (typeof window === "undefined") return;
+
+  window.__backpropInstallPromptEvent = promptEvent;
+}
+
+function getStandaloneState(): boolean {
+  if (typeof window === "undefined") return false;
+
+  const mediaMatches =
+    typeof window.matchMedia === "function"
+      ? window.matchMedia("(display-mode: standalone)").matches
+      : false;
+  const navigatorStandalone =
+    (window.navigator as Navigator & { standalone?: boolean }).standalone ===
+    true;
+
+  return mediaMatches || navigatorStandalone;
+}
+
+function getInitialInstallCardState(): InstallCardState {
+  const promptEvent = getCapturedInstallPrompt();
+
+  return {
+    promptEvent,
+    standalone: getStandaloneState(),
+    ios:
+      typeof window !== "undefined"
+        ? isIosInstallBrowser(
+            window.navigator as Navigator & {
+              userAgent: string;
+              maxTouchPoints?: number;
+            },
+          )
+        : false,
+    dismissed: promptEvent ? false : loadInstallCardDismissed(),
+  };
+}
+
 export async function runInstallPrompt(args: {
   promptEvent: BeforeInstallPromptEvent;
   clearPrompt: () => void;
@@ -134,14 +192,13 @@ export async function runInstallPrompt(args: {
 }
 
 export default function PwaInstallCard() {
-  const [promptEvent, setPromptEvent] =
-    useState<BeforeInstallPromptEvent | null>(null);
-  const [standalone, setStandalone] = useState(false);
-  const [ios, setIos] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
+  const [state, setState] = useState<InstallCardState>(getInitialInstallCardState);
 
   const updateDismissed = useCallback((nextDismissed: boolean) => {
-    setDismissed(nextDismissed);
+    setState((current) => ({
+      ...current,
+      dismissed: nextDismissed,
+    }));
     if (nextDismissed) {
       saveInstallCardDismissed();
       return;
@@ -150,36 +207,50 @@ export default function PwaInstallCard() {
   }, []);
 
   useEffect(() => {
-    const media = window.matchMedia("(display-mode: standalone)");
-    const updateStandalone = (matches: boolean) => {
-      const navigatorStandalone =
-        (window.navigator as Navigator & { standalone?: boolean }).standalone ===
-        true;
-      setStandalone(matches || navigatorStandalone);
-    };
+    const media =
+      typeof window.matchMedia === "function"
+        ? window.matchMedia("(display-mode: standalone)")
+        : null;
 
-    updateStandalone(media.matches);
-    setIos(isIosInstallBrowser(window.navigator.userAgent));
-    setDismissed(loadInstallCardDismissed());
+    const initialState = getInitialInstallCardState();
+    if (initialState.promptEvent) {
+      clearInstallCardDismissed();
+    }
+    setState(initialState);
 
     const onBeforeInstallPrompt = (event: Event) => {
       const deferred = event as BeforeInstallPromptEvent;
       deferred.preventDefault();
-      setPromptEvent(deferred);
+      setCapturedInstallPrompt(deferred);
+      setState((current) => ({
+        ...current,
+        promptEvent: deferred,
+        dismissed: false,
+      }));
       updateDismissed(false);
     };
 
     const onDisplayModeChange = (event: MediaQueryListEvent) => {
-      updateStandalone(event.matches);
+      setState((current) => ({
+        ...current,
+        standalone:
+          event.matches ||
+          (window.navigator as Navigator & { standalone?: boolean })
+            .standalone === true,
+      }));
     };
 
     const onInstalled = () => {
-      setPromptEvent(null);
-      setStandalone(true);
+      setCapturedInstallPrompt(null);
+      setState((current) => ({
+        ...current,
+        promptEvent: null,
+        standalone: true,
+      }));
       updateDismissed(false);
     };
 
-    media.addEventListener("change", onDisplayModeChange);
+    media?.addEventListener("change", onDisplayModeChange);
     window.addEventListener(
       "beforeinstallprompt",
       onBeforeInstallPrompt as EventListener,
@@ -187,7 +258,7 @@ export default function PwaInstallCard() {
     window.addEventListener("appinstalled", onInstalled);
 
     return () => {
-      media.removeEventListener("change", onDisplayModeChange);
+      media?.removeEventListener("change", onDisplayModeChange);
       window.removeEventListener(
         "beforeinstallprompt",
         onBeforeInstallPrompt as EventListener,
@@ -199,19 +270,25 @@ export default function PwaInstallCard() {
   const mode = useMemo(
     () =>
       getInstallCardMode({
-        isStandalone: standalone,
-        isIos: ios,
-        hasPrompt: Boolean(promptEvent),
-        dismissed,
+        isStandalone: state.standalone,
+        isIos: state.ios,
+        hasPrompt: Boolean(state.promptEvent),
+        dismissed: state.dismissed,
       }),
-    [dismissed, ios, promptEvent, standalone],
+    [state],
   );
 
   async function onInstall() {
-    if (!promptEvent) return;
+    if (!state.promptEvent) return;
     await runInstallPrompt({
-      promptEvent,
-      clearPrompt: () => setPromptEvent(null),
+      promptEvent: state.promptEvent,
+      clearPrompt: () => {
+        setCapturedInstallPrompt(null);
+        setState((current) => ({
+          ...current,
+          promptEvent: null,
+        }));
+      },
       setDismissed: updateDismissed,
     });
   }

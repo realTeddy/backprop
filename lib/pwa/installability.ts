@@ -5,8 +5,21 @@ export type InstallCardMode =
   | "ios"
   | "info";
 
-export function isIosInstallBrowser(userAgent: string): boolean {
-  return /iPad|iPhone|iPod/.test(userAgent);
+export function isIosInstallBrowser(
+  navigatorLike: string | { userAgent: string; maxTouchPoints?: number },
+): boolean {
+  const userAgent =
+    typeof navigatorLike === "string"
+      ? navigatorLike
+      : navigatorLike.userAgent;
+
+  if (/iPad|iPhone|iPod/.test(userAgent)) return true;
+
+  return (
+    /Macintosh/.test(userAgent) &&
+    typeof navigatorLike !== "string" &&
+    (navigatorLike.maxTouchPoints ?? 0) > 1
+  );
 }
 
 export function getInstallCardMode(args: {
