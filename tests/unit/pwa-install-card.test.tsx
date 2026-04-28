@@ -10,6 +10,7 @@ describe("getInstallCardMode", () => {
         isStandalone: false,
         isIos: false,
         hasPrompt: true,
+        dismissed: false,
       }),
     ).toBe("prompt");
   });
@@ -22,6 +23,7 @@ describe("getInstallCardMode", () => {
         isStandalone: false,
         isIos: true,
         hasPrompt: false,
+        dismissed: false,
       }),
     ).toBe("ios");
   });
@@ -34,8 +36,35 @@ describe("getInstallCardMode", () => {
         isStandalone: true,
         isIos: false,
         hasPrompt: true,
+        dismissed: false,
       }),
     ).toBe("hidden");
+  });
+
+  it("shows dismissal guidance after the install prompt is dismissed", async () => {
+    const { getInstallCardMode } = await import("@/lib/pwa/installability");
+
+    expect(
+      getInstallCardMode({
+        isStandalone: false,
+        isIos: false,
+        hasPrompt: false,
+        dismissed: true,
+      }),
+    ).toBe("dismissed");
+  });
+
+  it("shows iOS instructions even if prompt was previously dismissed", async () => {
+    const { getInstallCardMode } = await import("@/lib/pwa/installability");
+
+    expect(
+      getInstallCardMode({
+        isStandalone: false,
+        isIos: true,
+        hasPrompt: false,
+        dismissed: true,
+      }),
+    ).toBe("ios");
   });
 });
 
@@ -58,5 +87,14 @@ describe("PwaInstallCardView", () => {
 
     expect(html).toContain("Add to Home Screen");
     expect(html).toContain("Share");
+  });
+
+  it("renders browser-menu guidance in dismissed mode", async () => {
+    const { PwaInstallCardView } = await import("@/components/pwa-install-card");
+
+    const html = renderToStaticMarkup(<PwaInstallCardView mode="dismissed" />);
+
+    expect(html).toContain("browser menu");
+    expect(html).not.toContain("Install app");
   });
 });

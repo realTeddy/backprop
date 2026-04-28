@@ -46,6 +46,11 @@ export function PwaInstallCardView(props: {
               )}
             </div>
           </>
+        ) : mode === "dismissed" ? (
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">
+            Install was dismissed for now. You can install Backprop later from
+            your browser menu.
+          </p>
         ) : mode === "ios" ? (
           <p className="text-sm text-neutral-600 dark:text-neutral-400">
             On iPhone or iPad, open the Share menu and choose{" "}
@@ -120,8 +125,9 @@ export default function PwaInstallCard() {
         isStandalone: standalone,
         isIos: ios,
         hasPrompt: Boolean(promptEvent),
+        dismissed,
       }),
-    [ios, promptEvent, standalone],
+    [dismissed, ios, promptEvent, standalone],
   );
 
   async function onInstall() {
