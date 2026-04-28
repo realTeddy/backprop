@@ -13,7 +13,16 @@ describe("manifest", () => {
         background_color: "#ffffff",
         theme_color: "#0a0a0a",
         icons: expect.arrayContaining([
-          expect.objectContaining({ src: "/icon", type: "image/png" }),
+          expect.objectContaining({
+            src: "/icons/icon-192",
+            sizes: "192x192",
+            type: "image/png",
+          }),
+          expect.objectContaining({
+            src: "/icon",
+            sizes: "512x512",
+            type: "image/png",
+          }),
           expect.objectContaining({ src: "/apple-icon", type: "image/png" }),
         ]),
       }),
