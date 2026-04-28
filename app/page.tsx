@@ -1,4 +1,5 @@
 import Link from "next/link";
+import PwaInstallCard from "@/components/pwa-install-card";
 
 export default function Home() {
   return (
@@ -15,6 +16,7 @@ export default function Home() {
           from linear algebra to building a small GPT from scratch.
         </p>
       </header>
+      <PwaInstallCard />
       <div className="flex gap-3">
         <Link
           href="/login"
