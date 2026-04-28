@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   getInstallCardMode,
   isIosInstallBrowser,
@@ -11,6 +11,8 @@ type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
 };
+
+const DISMISSAL_STORAGE_KEY = "backprop.pwa.install-card-dismissed";
 
 export function PwaInstallCardView(props: {
   mode: InstallCardMode;
@@ -65,6 +67,50 @@ function reportInstallPromptError(error: Error) {
   console.error("[pwa-install-card] failed to show install prompt", error);
 }
 
+function reportInstallStorageError(action: "load" | "save" | "clear", error: Error) {
+  console.error(`[pwa-install-card] failed to ${action} dismissed state`, error);
+}
+
+export function loadInstallCardDismissed(): boolean {
+  if (typeof window === "undefined") return false;
+
+  try {
+    return window.localStorage.getItem(DISMISSAL_STORAGE_KEY) === "1";
+  } catch (error) {
+    reportInstallStorageError(
+      "load",
+      error instanceof Error ? error : new Error("Storage read failed"),
+    );
+    return false;
+  }
+}
+
+export function saveInstallCardDismissed(): void {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.localStorage.setItem(DISMISSAL_STORAGE_KEY, "1");
+  } catch (error) {
+    reportInstallStorageError(
+      "save",
+      error instanceof Error ? error : new Error("Storage write failed"),
+    );
+  }
+}
+
+export function clearInstallCardDismissed(): void {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.localStorage.removeItem(DISMISSAL_STORAGE_KEY);
+  } catch (error) {
+    reportInstallStorageError(
+      "clear",
+      error instanceof Error ? error : new Error("Storage clear failed"),
+    );
+  }
+}
+
 export async function runInstallPrompt(args: {
   promptEvent: BeforeInstallPromptEvent;
   clearPrompt: () => void;
@@ -94,6 +140,15 @@ export default function PwaInstallCard() {
   const [ios, setIos] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
+  const updateDismissed = useCallback((nextDismissed: boolean) => {
+    setDismissed(nextDismissed);
+    if (nextDismissed) {
+      saveInstallCardDismissed();
+      return;
+    }
+    clearInstallCardDismissed();
+  }, []);
+
   useEffect(() => {
     const media = window.matchMedia("(display-mode: standalone)");
     const updateStandalone = (matches: boolean) => {
@@ -105,12 +160,13 @@ export default function PwaInstallCard() {
 
     updateStandalone(media.matches);
     setIos(isIosInstallBrowser(window.navigator.userAgent));
+    setDismissed(loadInstallCardDismissed());
 
     const onBeforeInstallPrompt = (event: Event) => {
       const deferred = event as BeforeInstallPromptEvent;
       deferred.preventDefault();
       setPromptEvent(deferred);
-      setDismissed(false);
+      updateDismissed(false);
     };
 
     const onDisplayModeChange = (event: MediaQueryListEvent) => {
@@ -120,6 +176,7 @@ export default function PwaInstallCard() {
     const onInstalled = () => {
       setPromptEvent(null);
       setStandalone(true);
+      updateDismissed(false);
     };
 
     media.addEventListener("change", onDisplayModeChange);
@@ -137,7 +194,7 @@ export default function PwaInstallCard() {
       );
       window.removeEventListener("appinstalled", onInstalled);
     };
-  }, []);
+  }, [updateDismissed]);
 
   const mode = useMemo(
     () =>
@@ -155,7 +212,7 @@ export default function PwaInstallCard() {
     await runInstallPrompt({
       promptEvent,
       clearPrompt: () => setPromptEvent(null),
-      setDismissed,
+      setDismissed: updateDismissed,
     });
   }
 

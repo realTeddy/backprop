@@ -1,5 +1,84 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+type StorageStub = {
+  getItem: ReturnType<typeof vi.fn>;
+  setItem: ReturnType<typeof vi.fn>;
+  removeItem: ReturnType<typeof vi.fn>;
+};
+
+function installWindow(localStorage: StorageStub) {
+  Object.defineProperty(globalThis, "window", {
+    value: { localStorage },
+    configurable: true,
+    writable: true,
+  });
+}
+
+describe("install dismissal storage", () => {
+  let originalWindow: typeof globalThis.window;
+
+  beforeEach(() => {
+    originalWindow = globalThis.window;
+  });
+
+  afterEach(() => {
+    if (typeof originalWindow === "undefined") {
+      Reflect.deleteProperty(globalThis, "window");
+    } else {
+      Object.defineProperty(globalThis, "window", {
+        value: originalWindow,
+        configurable: true,
+        writable: true,
+      });
+    }
+
+    vi.restoreAllMocks();
+  });
+
+  it("persists dismissal and restores it from localStorage", async () => {
+    const localStorage = {
+      getItem: vi.fn().mockReturnValue("1"),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+    };
+    installWindow(localStorage);
+
+    const {
+      loadInstallCardDismissed,
+      saveInstallCardDismissed,
+    } = await import("@/components/pwa-install-card");
+
+    saveInstallCardDismissed();
+
+    expect(localStorage.setItem).toHaveBeenCalledWith(
+      "backprop.pwa.install-card-dismissed",
+      "1",
+    );
+    expect(loadInstallCardDismissed()).toBe(true);
+  });
+
+  it("clears persisted dismissal when install becomes available again", async () => {
+    const localStorage = {
+      getItem: vi.fn().mockReturnValue("1"),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+    };
+    installWindow(localStorage);
+
+    const { clearInstallCardDismissed, loadInstallCardDismissed } = await import(
+      "@/components/pwa-install-card"
+    );
+
+    clearInstallCardDismissed();
+
+    expect(localStorage.removeItem).toHaveBeenCalledWith(
+      "backprop.pwa.install-card-dismissed",
+    );
+    localStorage.getItem.mockReturnValue(null);
+    expect(loadInstallCardDismissed()).toBe(false);
+  });
+});
 
 describe("getInstallCardMode", () => {
   it("prefers a real install button when a deferred prompt exists", async () => {
