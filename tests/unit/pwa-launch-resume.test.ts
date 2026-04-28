@@ -10,6 +10,12 @@ describe("normalizeTrackedRoute", () => {
     );
   });
 
+  it("keeps nested settings routes for signed-in users", async () => {
+    const { normalizeTrackedRoute } = await import("@/lib/pwa/launch-resume");
+
+    expect(normalizeTrackedRoute("/settings/data")).toBe("/settings/data");
+  });
+
   it("rejects external and auth-only routes", async () => {
     const { normalizeTrackedRoute } = await import("@/lib/pwa/launch-resume");
 

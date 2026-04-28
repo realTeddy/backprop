@@ -27,6 +27,10 @@ export function normalizeTrackedRoute(
     return path;
   }
 
+  if (pathname?.startsWith("/settings/")) {
+    return path;
+  }
+
   if (pathname?.startsWith("/learn/")) {
     return path;
   }
