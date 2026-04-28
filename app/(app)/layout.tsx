@@ -1,7 +1,9 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { PwaLastRouteTracker } from "@/components/pwa-last-route-tracker";
 import { SignOutButton } from "@/components/sign-out-button";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export default async function AppLayout({
   children,
@@ -19,6 +21,9 @@ export default async function AppLayout({
 
   return (
     <div className="flex min-h-screen flex-col">
+      <Suspense fallback={null}>
+        <PwaLastRouteTracker />
+      </Suspense>
       <header className="border-b border-neutral-200 dark:border-neutral-800">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-3">
           <Link href="/dashboard" className="text-sm font-semibold">
