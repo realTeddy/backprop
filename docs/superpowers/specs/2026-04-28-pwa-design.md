@@ -21,6 +21,14 @@ Backprop should be installable as a Progressive Web App without taking on offlin
 
 Use Next.js App Router's native metadata and manifest support instead of a PWA plugin. Add a lightweight homepage install card, generated app icons, and a dedicated launch-resume route. Keep the implementation narrowly focused on installability and launch behavior.
 
+## Implementation refinements
+
+The implementation refined a few details during review without changing the core scope:
+
+- expose both `192x192` and `512x512` generated manifest icons and keep the manifest colors aligned with the dark Backprop theme.
+- add early `beforeinstallprompt` capture, persistent dismissal state, and modern iPadOS detection so the homepage install card behaves consistently across reloads and platforms.
+- protect `/launch` with the same graceful missing-Supabase-config behavior as the rest of the authenticated app.
+
 ## Architecture
 
 ### PWA metadata
