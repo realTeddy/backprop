@@ -1,5 +1,6 @@
 import { DefaultChatTransport } from "ai";
 import type { ProviderId } from "@/lib/ai/providers";
+import type { TutorInlinePyodideCapability } from "@/lib/ai/tutor-inline-pyodide";
 
 export type TutorMode = "onboarding" | "diagnostic" | "teach";
 
@@ -14,9 +15,10 @@ export function createTutorChatTransport(args: {
   mode: TutorMode;
   topicId?: string | null;
   sessionId: string | null;
+  capability?: TutorInlinePyodideCapability | null;
   fetch?: typeof fetch;
 }) {
-  const { getChoice, mode, topicId, sessionId, fetch } = args;
+  const { getChoice, mode, topicId, sessionId, capability, fetch } = args;
 
   return new DefaultChatTransport({
     api: "/api/tutor",
@@ -49,6 +51,10 @@ export function createTutorChatTransport(args: {
         mode,
         topicId: topicId ?? null,
         sessionId,
+        capability: capability ?? {
+          inlinePyodideAllowed: false,
+          staticProjectRuntime: null,
+        },
       };
     },
   });

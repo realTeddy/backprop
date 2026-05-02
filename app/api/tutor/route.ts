@@ -16,6 +16,7 @@ import {
   buildTutorSystemPrompt,
   type LearnerContext,
 } from "@/lib/ai/tutor-system-prompt";
+import { tutorInlinePyodideCapabilitySchema } from "@/lib/ai/tutor-inline-pyodide";
 import { encryptMessage } from "@/lib/crypto/conversations";
 
 export const runtime = "nodejs";
@@ -33,6 +34,7 @@ const RequestSchema = z.object({
   // verbose and adds little value vs the type narrowing convertToModelMessages
   // already performs.
   messages: z.array(z.unknown()),
+  capability: tutorInlinePyodideCapabilitySchema.optional(),
 });
 
 function extractText(message: UIMessage): string {
@@ -66,7 +68,7 @@ async function handle(req: Request) {
   if (!parsed.success) {
     return Response.json({ error: z.treeifyError(parsed.error) }, { status: 400 });
   }
-  const { provider, model, apiKey, messages, mode, topicId, sessionId } =
+  const { provider, model, apiKey, messages, mode, topicId, sessionId, capability } =
     parsed.data;
   const uiMessages = messages as UIMessage[];
 
@@ -124,6 +126,10 @@ async function handle(req: Request) {
     })),
     currentTopicId: topicId ?? null,
     mode,
+    uiCapabilities: capability ?? {
+      inlinePyodideAllowed: false,
+      staticProjectRuntime: null,
+    },
   };
 
   const system = buildTutorSystemPrompt(learner);

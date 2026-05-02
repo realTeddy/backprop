@@ -72,6 +72,11 @@ export default async function LearnTopicPage({
 
   const project = topic.project ? PROJECTS[topic.project] : undefined;
 
+  const tutorCapability = {
+    inlinePyodideAllowed: true,
+    staticProjectRuntime: project?.runtime ?? null,
+  };
+
   return (
     <div className="space-y-8">
       <header className="space-y-2">
@@ -94,6 +99,7 @@ export default async function LearnTopicPage({
         <TutorChat
           mode="teach"
           topicId={topic.id}
+          capability={tutorCapability}
           initialMessages={resumeState.initialMessages}
           initialSessionId={resumeState.sessionId}
           initialUserMessage={resumeState.initialUserMessage}

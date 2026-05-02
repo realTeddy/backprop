@@ -8,12 +8,14 @@ import { activeChoice, loadKeys } from "@/lib/ai/keys";
 import type { ProviderId } from "@/lib/ai/providers";
 import { TutorMessageContent } from "@/components/tutor-message-content";
 import { createTutorChatTransport, type TutorMode } from "@/lib/ai/tutor-transport";
+import type { TutorInlinePyodideCapability } from "@/lib/ai/tutor-inline-pyodide";
 
 type Mode = TutorMode;
 
 export function TutorChat(props: {
   mode: Mode;
   topicId?: string | null;
+  capability?: TutorInlinePyodideCapability | null;
   initialUserMessage?: string;
   initialMessages?: UIMessage[];
   initialSessionId?: string | null;
@@ -22,6 +24,7 @@ export function TutorChat(props: {
   const {
     mode,
     topicId,
+    capability,
     initialUserMessage,
     initialMessages = [],
     initialSessionId = null,
@@ -67,6 +70,7 @@ export function TutorChat(props: {
       mode,
       topicId,
       sessionId,
+      capability,
     }),
   );
 
