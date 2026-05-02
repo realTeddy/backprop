@@ -10,6 +10,7 @@ export function createMessageSession(args: {
     kernel: Awaited<ReturnType<typeof loadKernel>>;
     namespace: unknown;
   }> | null = null;
+  let runQueue = Promise.resolve<unknown>(undefined);
 
   async function getKernelAndNamespace() {
     if (!kernelAndNamespacePromise) {
@@ -23,13 +24,17 @@ export function createMessageSession(args: {
 
   return {
     async run(code: string, opts?: { onOutput?: (s: string) => void }) {
-      const { kernel, namespace } = await getKernelAndNamespace();
-      if (opts?.onOutput) {
-        kernel.setStdout({ batched: opts.onOutput });
-        kernel.setStderr({ batched: opts.onOutput });
-      }
-      await kernel.loadPackagesFromImports(code);
-      return kernel.runPythonAsync(code, { globals: namespace });
+      const result = runQueue.then(async () => {
+        const { kernel, namespace } = await getKernelAndNamespace();
+        if (opts?.onOutput) {
+          kernel.setStdout({ batched: opts.onOutput });
+          kernel.setStderr({ batched: opts.onOutput });
+        }
+        await kernel.loadPackagesFromImports(code);
+        return kernel.runPythonAsync(code, { globals: namespace });
+      });
+      runQueue = result.catch(() => undefined);
+      return result;
     },
   };
 }
