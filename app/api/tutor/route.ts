@@ -34,7 +34,10 @@ const RequestSchema = z.object({
   // verbose and adds little value vs the type narrowing convertToModelMessages
   // already performs.
   messages: z.array(z.unknown()),
-  capability: tutorInlinePyodideCapabilitySchema.optional(),
+  capability: tutorInlinePyodideCapabilitySchema.default({
+    inlinePyodideAllowed: false,
+    staticProjectRuntime: null,
+  }),
 });
 
 function extractText(message: UIMessage): string {
@@ -126,10 +129,7 @@ async function handle(req: Request) {
     })),
     currentTopicId: topicId ?? null,
     mode,
-    uiCapabilities: capability ?? {
-      inlinePyodideAllowed: false,
-      staticProjectRuntime: null,
-    },
+    uiCapabilities: capability,
   };
 
   const system = buildTutorSystemPrompt(learner);
@@ -137,7 +137,7 @@ async function handle(req: Request) {
   const tools = buildTutorTools({
     supabase,
     userId: user.id,
-    uiCapabilities: parsed.data.capability,
+    uiCapabilities: capability,
   });
 
   const resolvedSessionId = sessionId ?? null;
