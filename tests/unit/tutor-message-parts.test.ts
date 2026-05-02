@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { splitTutorMessageParts } from "@/lib/ai/tutor-message-parts";
+import { SHOW_PYODIDE_SECTIONS_PART_TYPE } from "@/lib/ai/tutor-inline-pyodide";
 
 describe("splitTutorMessageParts", () => {
   it("keeps prose and flattens show_pyodide_sections tool output", () => {
     const parsed = splitTutorMessageParts([
       { type: "text", text: "Try this in Python." },
       {
-        type: "tool-show_pyodide_sections",
+        type: SHOW_PYODIDE_SECTIONS_PART_TYPE,
         state: "output-available",
         output: {
           sections: [
@@ -38,7 +39,7 @@ describe("splitTutorMessageParts", () => {
     const parsed = splitTutorMessageParts([
       { type: "text", text: "Here is some content." },
       {
-        type: "tool-show_pyodide_sections",
+        type: SHOW_PYODIDE_SECTIONS_PART_TYPE,
         state: "output-available",
         output: { sections: [{ title: "", instructions: "", code: "" }] },
       },
@@ -52,7 +53,7 @@ describe("splitTutorMessageParts", () => {
     const parsed = splitTutorMessageParts([
       { type: "text", text: "Thinking…" },
       {
-        type: "tool-show_pyodide_sections",
+        type: SHOW_PYODIDE_SECTIONS_PART_TYPE,
         state: "input-available",
         input: { sections: [] },
       },
