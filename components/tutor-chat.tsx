@@ -7,8 +7,10 @@ import { useEffect, useState, type FormEvent } from "react";
 import { activeChoice, loadKeys } from "@/lib/ai/keys";
 import type { ProviderId } from "@/lib/ai/providers";
 import { TutorMessageContent } from "@/components/tutor-message-content";
+import { TutorInlinePyodideSections } from "@/components/tutor-inline-pyodide-sections";
 import { createTutorChatTransport, type TutorMode } from "@/lib/ai/tutor-transport";
 import type { TutorInlinePyodideCapability } from "@/lib/ai/tutor-inline-pyodide";
+import { splitTutorMessageParts } from "@/lib/ai/tutor-message-parts";
 
 type Mode = TutorMode;
 
@@ -130,11 +132,9 @@ export function TutorChat(props: {
         {messages.map((m) => (
           <Message
             key={m.id}
+            id={m.id}
             role={m.role}
-            text={m.parts
-              .filter((p): p is { type: "text"; text: string } => p.type === "text")
-              .map((p) => p.text)
-              .join("")}
+            parts={m.parts}
           />
         ))}
         {(status === "submitted" || status === "streaming") && (
@@ -179,8 +179,13 @@ export function TutorChat(props: {
   );
 }
 
-function Message({ role, text }: { role: string; text: string }) {
-  const isUser = role === "user";
+function Message(props: {
+  id: string;
+  role: string;
+  parts: UIMessage["parts"];
+}) {
+  const { text, pyodideSections } = splitTutorMessageParts(props.parts);
+  const isUser = props.role === "user";
   return (
     <div
       className={`rounded-lg px-4 py-3 text-sm ${
@@ -189,7 +194,13 @@ function Message({ role, text }: { role: string; text: string }) {
           : "max-w-[80%] bg-neutral-100 text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100"
       }`}
     >
-      <TutorMessageContent text={text} />
+      {text ? <TutorMessageContent text={text} /> : null}
+      {props.role === "assistant" && pyodideSections.length > 0 ? (
+        <TutorInlinePyodideSections
+          messageId={props.id}
+          sections={pyodideSections}
+        />
+      ) : null}
     </div>
   );
 }
