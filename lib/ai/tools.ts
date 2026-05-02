@@ -105,7 +105,7 @@ export function buildTutorTools(args: {
             description:
               "Attach one or more inline runnable Pyodide sections to this assistant turn. Use only when code materially helps.",
             inputSchema: tutorPyodideSectionsPayloadSchema,
-            execute: async ({ sections }) => ({ sections }),
+            execute: async ({ sections }) => ({ ok: true, count: sections.length }),
           }),
         }
       : {}),
