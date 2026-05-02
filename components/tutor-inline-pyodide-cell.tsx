@@ -17,21 +17,6 @@ export function TutorInlinePyodideCell(props: {
   const [error, setError] = useState<string | null>(null);
   const stdoutRef = useRef<string>("");
 
-  const ensureReady = useCallback(async () => {
-    const kernel = await getPyodide();
-    kernel.setStdout({
-      batched: (s: string) => {
-        stdoutRef.current += s + "\n";
-      },
-    });
-    kernel.setStderr({
-      batched: (s: string) => {
-        stdoutRef.current += s + "\n";
-      },
-    });
-    return kernel;
-  }, []);
-
   useEffect(() => {
     let cancelled = false;
     setStatus("loading");
@@ -54,8 +39,11 @@ export function TutorInlinePyodideCell(props: {
     setError(null);
     stdoutRef.current = "";
     try {
-      await ensureReady();
-      const value = await session.run(code);
+      const value = await session.run(code, {
+        onOutput: (s) => {
+          stdoutRef.current += s + "\n";
+        },
+      });
       const tail =
         typeof value === "undefined" || value === null
           ? ""

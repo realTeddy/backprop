@@ -22,8 +22,12 @@ export function createMessageSession(args: {
   }
 
   return {
-    async run(code: string) {
+    async run(code: string, opts?: { onOutput?: (s: string) => void }) {
       const { kernel, namespace } = await getKernelAndNamespace();
+      if (opts?.onOutput) {
+        kernel.setStdout({ batched: opts.onOutput });
+        kernel.setStderr({ batched: opts.onOutput });
+      }
       await kernel.loadPackagesFromImports(code);
       return kernel.runPythonAsync(code, { globals: namespace });
     },

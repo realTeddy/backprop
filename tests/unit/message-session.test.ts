@@ -7,6 +7,7 @@ describe("createMessageSession", () => {
       .fn()
       .mockResolvedValueOnce(undefined)
       .mockResolvedValueOnce(4);
+    const createNamespace = vi.fn(async () => ({ key: "ns-1" }));
 
     const session = createMessageSession({
       loadKernel: async () =>
@@ -15,7 +16,7 @@ describe("createMessageSession", () => {
           loadPackagesFromImports: vi.fn(),
           setStdout: vi.fn(),
           setStderr: vi.fn(),
-          createNamespace: vi.fn(async () => ({ key: "ns-1" })),
+          createNamespace,
         }) as never,
     });
 
@@ -24,5 +25,6 @@ describe("createMessageSession", () => {
 
     expect(runPythonAsync.mock.calls[0]?.[1]).toEqual({ globals: { key: "ns-1" } });
     expect(runPythonAsync.mock.calls[1]?.[1]).toEqual({ globals: { key: "ns-1" } });
+    expect(createNamespace).toHaveBeenCalledTimes(1);
   });
 });
