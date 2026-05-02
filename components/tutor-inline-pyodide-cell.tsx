@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getPyodide } from "@/lib/pyodide/kernel";
 import { createMessageSession } from "@/lib/pyodide/message-session";
 import type { TutorPyodideSection } from "@/lib/ai/tutor-inline-pyodide";

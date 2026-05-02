@@ -10,6 +10,7 @@ export function TutorInlinePyodideSections(props: {
   sections: TutorPyodideSection[];
 }) {
   // One namespace per message — cells share state within a message.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- messageId is a cache-busting key
   const session = useMemo(() => createMessageSession({}), [props.messageId]);
 
   return (

@@ -16,7 +16,11 @@ type PyodideAPI = {
   createNamespace: () => Promise<PyodideNamespace>;
 };
 
-type LoadPyodide = (opts: { indexURL: string }) => Promise<PyodideAPI>;
+type RawPyodide = PyodideAPI & {
+  globals: { copy: () => PyodideNamespace };
+};
+
+type LoadPyodide = (opts: { indexURL: string }) => Promise<RawPyodide>;
 
 declare global {
   interface Window {

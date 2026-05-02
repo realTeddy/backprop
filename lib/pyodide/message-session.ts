@@ -26,6 +26,8 @@ export function createMessageSession(args: {
     async run(code: string, opts?: { onOutput?: (s: string) => void }) {
       const result = runQueue.then(async () => {
         const { kernel, namespace } = await getKernelAndNamespace();
+        // NOTE: stdout/stderr handlers are global on the shared Pyodide singleton.
+        // If multiple message sessions run concurrently, output may cross over.
         kernel.setStdout({ batched: () => {} });
         kernel.setStderr({ batched: () => {} });
         if (opts?.onOutput) {
