@@ -19,6 +19,22 @@ describe("buildTutorSystemPrompt", () => {
     expect(prompt).toContain("Use the `show_pyodide_sections` tool");
   });
 
+  it("allows inline pyodide alongside a static project runtime", () => {
+    const prompt = buildTutorSystemPrompt({
+      displayName: null,
+      onboarding: null,
+      mastery: [],
+      currentTopicId: "numpy-fluency",
+      mode: "teach",
+      uiCapabilities: {
+        inlinePyodideAllowed: true,
+        staticProjectRuntime: "pyodide",
+      },
+    });
+
+    expect(prompt).toContain("INLINE PYODIDE: allowed on this learn page.");
+  });
+
   it("tells the tutor when inline pyodide is not available", () => {
     const prompt = buildTutorSystemPrompt({
       displayName: null,
