@@ -6,6 +6,8 @@ export function createMessageSession(args: {
   loadKernel?: typeof getPyodide;
 }) {
   const loadKernel = args.loadKernel ?? getPyodide;
+  // NOTE: A failed kernel load permanently poisons the session since
+  // kernelAndNamespacePromise is cached. Callers must recreate the session to retry.
   let kernelAndNamespacePromise: Promise<{
     kernel: Awaited<ReturnType<typeof loadKernel>>;
     namespace: unknown;

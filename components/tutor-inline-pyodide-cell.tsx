@@ -16,6 +16,7 @@ export function TutorInlinePyodideCell(props: {
   const [output, setOutput] = useState("");
   const [error, setError] = useState<string | null>(null);
   const stdoutRef = useRef<string>("");
+  const mountedRef = useRef(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -31,6 +32,7 @@ export function TutorInlinePyodideCell(props: {
       });
     return () => {
       cancelled = true;
+      mountedRef.current = false;
     };
   }, []);
 
@@ -41,9 +43,11 @@ export function TutorInlinePyodideCell(props: {
     try {
       const value = await session.run(code, {
         onOutput: (s) => {
+          // Pyodide batched handlers provide lines without trailing newlines.
           stdoutRef.current += s + "\n";
         },
       });
+      if (!mountedRef.current) return;
       const tail =
         typeof value === "undefined" || value === null
           ? ""
@@ -51,6 +55,7 @@ export function TutorInlinePyodideCell(props: {
       setOutput(stdoutRef.current + tail);
       setStatus("ready");
     } catch (err) {
+      if (!mountedRef.current) return;
       setOutput(stdoutRef.current);
       setError((err as Error).message);
       setStatus("error");
