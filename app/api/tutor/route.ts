@@ -134,8 +134,11 @@ async function handle(req: Request) {
 
   const system = buildTutorSystemPrompt(learner);
   const languageModel = await resolveModel({ provider, model, apiKey });
-  // TODO: Task 2 — forward `capability` to buildTutorTools when show_pyodide_sections tool is added
-  const tools = buildTutorTools({ supabase, userId: user.id });
+  const tools = buildTutorTools({
+    supabase,
+    userId: user.id,
+    uiCapabilities: parsed.data.capability,
+  });
 
   const resolvedSessionId = sessionId ?? null;
   if (resolvedSessionId) {

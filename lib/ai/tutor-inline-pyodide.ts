@@ -8,3 +8,21 @@ export const tutorInlinePyodideCapabilitySchema = z.object({
 export type TutorInlinePyodideCapability = z.infer<
   typeof tutorInlinePyodideCapabilitySchema
 >;
+
+export const MAX_PYODIDE_SECTIONS_PER_MESSAGE = 3;
+
+export const tutorPyodideSectionSchema = z.object({
+  title: z.string().min(1).max(80),
+  instructions: z.string().min(1).max(280),
+  code: z.string().min(1).max(4000),
+  runLabel: z.string().min(1).max(24).optional(),
+});
+
+export const tutorPyodideSectionsPayloadSchema = z.object({
+  sections: z
+    .array(tutorPyodideSectionSchema)
+    .min(1)
+    .max(MAX_PYODIDE_SECTIONS_PER_MESSAGE),
+});
+
+export type TutorPyodideSection = z.infer<typeof tutorPyodideSectionSchema>;

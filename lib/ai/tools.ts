@@ -2,6 +2,8 @@ import { tool } from "ai";
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { loadCurriculum } from "@/lib/curriculum/graph";
+import type { TutorInlinePyodideCapability } from "@/lib/ai/tutor-inline-pyodide";
+import { tutorPyodideSectionsPayloadSchema } from "@/lib/ai/tutor-inline-pyodide";
 
 /**
  * Tools the tutor can call to update the learner's mastery state, record
@@ -12,11 +14,12 @@ import { loadCurriculum } from "@/lib/curriculum/graph";
 export function buildTutorTools(args: {
   supabase: SupabaseClient;
   userId: string;
+  uiCapabilities?: TutorInlinePyodideCapability;
 }) {
-  const { supabase, userId } = args;
+  const { supabase, userId, uiCapabilities } = args;
   const curriculum = loadCurriculum();
 
-  return {
+  const tools: Record<string, ReturnType<typeof tool>> = {
     fetch_topic: tool({
       description:
         "Look up a topic by id and return its title, summary, prerequisites, and any associated coding project.",
@@ -96,5 +99,16 @@ export function buildTutorTools(args: {
         return { id: data.id };
       },
     }),
-  } as const;
+  };
+
+  if (uiCapabilities?.inlinePyodideAllowed) {
+    tools.show_pyodide_sections = tool({
+      description:
+        "Attach one or more inline runnable Pyodide sections to this assistant turn. Use only when code materially helps.",
+      inputSchema: tutorPyodideSectionsPayloadSchema,
+      execute: async ({ sections }) => ({ sections }),
+    });
+  }
+
+  return tools;
 }
