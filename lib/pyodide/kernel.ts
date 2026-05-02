@@ -3,14 +3,24 @@
 const PYODIDE_VERSION = "0.27.2";
 const CDN_BASE = `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full`;
 
+type PyodideNamespace = unknown;
+
 type PyodideAPI = {
-  runPythonAsync: (code: string) => Promise<unknown>;
+  runPythonAsync: (
+    code: string,
+    opts?: { globals?: PyodideNamespace },
+  ) => Promise<unknown>;
   loadPackagesFromImports: (code: string) => Promise<void>;
   setStdout: (opts: { batched: (s: string) => void }) => void;
   setStderr: (opts: { batched: (s: string) => void }) => void;
+  createNamespace: () => Promise<PyodideNamespace>;
 };
 
-type LoadPyodide = (opts: { indexURL: string }) => Promise<PyodideAPI>;
+type RawPyodide = PyodideAPI & {
+  globals: { copy: () => PyodideNamespace };
+};
+
+type LoadPyodide = (opts: { indexURL: string }) => Promise<RawPyodide>;
 
 declare global {
   interface Window {
@@ -54,7 +64,10 @@ export function getPyodide(): Promise<PyodideAPI> {
     if (!window.loadPyodide) {
       throw new Error("loadPyodide global not present after script load");
     }
-    return window.loadPyodide({ indexURL: `${CDN_BASE}/` });
+    const raw = await window.loadPyodide({ indexURL: `${CDN_BASE}/` });
+    return Object.assign(raw, {
+      createNamespace: async () => raw.globals.copy(),
+    });
   })();
   return kernelPromise;
 }

@@ -22,6 +22,10 @@ describe("createTutorChatTransport", () => {
       mode: "teach",
       topicId: "vectors-basics",
       sessionId: "session-1",
+      capability: {
+        inlinePyodideAllowed: true,
+        staticProjectRuntime: null,
+      },
       fetch: fetchMock as typeof fetch,
     });
 
@@ -58,8 +62,10 @@ describe("createTutorChatTransport", () => {
       mode: "teach",
       topicId: "vectors-basics",
       sessionId: "session-1",
-      id: "chat-1",
-      trigger: "submit-message",
+      capability: {
+        inlinePyodideAllowed: true,
+        staticProjectRuntime: null,
+      },
     });
   });
 });

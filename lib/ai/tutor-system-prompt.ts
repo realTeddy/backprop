@@ -1,4 +1,5 @@
 import { loadCurriculum } from "@/lib/curriculum/graph";
+import type { TutorInlinePyodideCapability } from "@/lib/ai/tutor-inline-pyodide";
 
 export type LearnerContext = {
   displayName: string | null;
@@ -12,6 +13,7 @@ export type LearnerContext = {
   mastery: { topicId: string; score: number }[];
   currentTopicId?: string | null;
   mode: "onboarding" | "diagnostic" | "teach";
+  uiCapabilities: TutorInlinePyodideCapability;
 };
 
 export function buildTutorSystemPrompt(ctx: LearnerContext): string {
@@ -60,6 +62,14 @@ export function buildTutorSystemPrompt(ctx: LearnerContext): string {
     ].join(" ");
   })();
 
+  const capabilityBlock = ctx.uiCapabilities.inlinePyodideAllowed
+    ? [
+        "INLINE PYODIDE: allowed on this learn page.",
+        "Use the `show_pyodide_sections` tool when runnable Python would materially help the learner.",
+        "Keep prose useful on its own; the tool is additive.",
+      ].join(" ")
+    : "INLINE PYODIDE: not available on this page.";
+
   return `You are Backprop, an adaptive AI tutor that teaches the math and code behind modern AI models, culminating in a small GPT built from scratch.
 
 LEARNER PROFILE
@@ -69,6 +79,8 @@ CURRICULUM (id (mastery): title ← prerequisites)
 ${topicsBlock}
 
 ${modeBlock}
+
+${capabilityBlock}
 
 GENERAL RULES
 - Math is introduced just-in-time before it is used in code.

@@ -10,6 +10,10 @@ function normalizeTutorMarkdown(text: string): string {
     .replace(/\\\(((?:.|\r?\n)+?)\\\)/g, (_, math: string) => `$${math}$`);
 }
 
+/**
+ * Renders text content from tutor message parts.
+ * Supports markdown, LaTeX math, and GFM formatting.
+ */
 export function TutorMessageContent({ text }: { text: string }) {
   const normalized = normalizeTutorMarkdown(text);
 
