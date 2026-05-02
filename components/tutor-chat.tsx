@@ -96,10 +96,7 @@ export function TutorChat(props: {
     if (!onAssistantMessage) return;
     const last = messages[messages.length - 1];
     if (last?.role !== "assistant") return;
-    const text = last.parts
-      .filter((p): p is { type: "text"; text: string } => p.type === "text")
-      .map((p) => p.text)
-      .join("");
+    const { text } = splitTutorMessageParts(last.parts);
     if (text) onAssistantMessage(text);
   }, [messages, onAssistantMessage]);
 
