@@ -26,6 +26,8 @@ export function createMessageSession(args: {
     async run(code: string, opts?: { onOutput?: (s: string) => void }) {
       const result = runQueue.then(async () => {
         const { kernel, namespace } = await getKernelAndNamespace();
+        kernel.setStdout({ batched: () => {} });
+        kernel.setStderr({ batched: () => {} });
         if (opts?.onOutput) {
           kernel.setStdout({ batched: opts.onOutput });
           kernel.setStderr({ batched: opts.onOutput });

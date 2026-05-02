@@ -60,7 +60,11 @@ export function getPyodide(): Promise<PyodideAPI> {
     if (!window.loadPyodide) {
       throw new Error("loadPyodide global not present after script load");
     }
-    return window.loadPyodide({ indexURL: `${CDN_BASE}/` });
+    const raw = await window.loadPyodide({ indexURL: `${CDN_BASE}/` });
+    return {
+      ...raw,
+      createNamespace: async () => raw.globals.copy(),
+    };
   })();
   return kernelPromise;
 }
