@@ -19,7 +19,7 @@ export function buildTutorTools(args: {
   const { supabase, userId, uiCapabilities } = args;
   const curriculum = loadCurriculum();
 
-  const tools: Record<string, ReturnType<typeof tool>> = {
+  return {
     fetch_topic: tool({
       description:
         "Look up a topic by id and return its title, summary, prerequisites, and any associated coding project.",
@@ -99,16 +99,15 @@ export function buildTutorTools(args: {
         return { id: data.id };
       },
     }),
-  };
-
-  if (uiCapabilities?.inlinePyodideAllowed) {
-    tools.show_pyodide_sections = tool({
-      description:
-        "Attach one or more inline runnable Pyodide sections to this assistant turn. Use only when code materially helps.",
-      inputSchema: tutorPyodideSectionsPayloadSchema,
-      execute: async ({ sections }) => ({ sections }),
-    });
-  }
-
-  return tools;
+    ...(uiCapabilities?.inlinePyodideAllowed
+      ? {
+          show_pyodide_sections: tool({
+            description:
+              "Attach one or more inline runnable Pyodide sections to this assistant turn. Use only when code materially helps.",
+            inputSchema: tutorPyodideSectionsPayloadSchema,
+            execute: async ({ sections }) => ({ sections }),
+          }),
+        }
+      : {}),
+  } as const;
 }

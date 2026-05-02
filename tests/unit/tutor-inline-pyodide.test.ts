@@ -24,4 +24,16 @@ describe("buildTutorTools", () => {
     expect(enabled).toHaveProperty("show_pyodide_sections");
     expect(disabled).not.toHaveProperty("show_pyodide_sections");
   });
+
+  it("omits show_pyodide_sections when uiCapabilities is not provided", () => {
+    const result = buildTutorTools({
+      supabase: {} as never,
+      userId: "user-1",
+    });
+
+    expect(result).not.toHaveProperty("show_pyodide_sections");
+    expect(result).toHaveProperty("fetch_topic");
+    expect(result).toHaveProperty("update_mastery");
+    expect(result).toHaveProperty("record_assessment");
+  });
 });
