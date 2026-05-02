@@ -2,6 +2,7 @@ import type { UIMessage } from "ai";
 import {
   tutorPyodideSectionsPayloadSchema,
   type TutorPyodideSection,
+  SHOW_PYODIDE_SECTIONS_PART_TYPE,
 } from "@/lib/ai/tutor-inline-pyodide";
 
 export function splitTutorMessageParts(parts: UIMessage["parts"]): {
@@ -14,7 +15,7 @@ export function splitTutorMessageParts(parts: UIMessage["parts"]): {
     .join("");
 
   const pyodideSections = parts.flatMap((part) => {
-    if (part.type !== "tool-show_pyodide_sections" || part.state !== "output-available") {
+    if (part.type !== SHOW_PYODIDE_SECTIONS_PART_TYPE || part.state !== "output-available") {
       return [];
     }
     const parsed = tutorPyodideSectionsPayloadSchema.safeParse(part.output);

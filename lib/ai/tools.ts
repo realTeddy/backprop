@@ -3,7 +3,10 @@ import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { loadCurriculum } from "@/lib/curriculum/graph";
 import type { TutorInlinePyodideCapability } from "@/lib/ai/tutor-inline-pyodide";
-import { tutorPyodideSectionsPayloadSchema } from "@/lib/ai/tutor-inline-pyodide";
+import {
+  tutorPyodideSectionsPayloadSchema,
+  SHOW_PYODIDE_SECTIONS_TOOL_NAME,
+} from "@/lib/ai/tutor-inline-pyodide";
 
 /**
  * Tools the tutor can call to update the learner's mastery state, record
@@ -101,7 +104,7 @@ export function buildTutorTools(args: {
     }),
     ...(uiCapabilities?.inlinePyodideAllowed
       ? {
-          show_pyodide_sections: tool({
+          [SHOW_PYODIDE_SECTIONS_TOOL_NAME]: tool({
             description:
               "Attach one or more inline runnable Pyodide sections to this assistant turn. Use only when code materially helps.",
             inputSchema: tutorPyodideSectionsPayloadSchema,

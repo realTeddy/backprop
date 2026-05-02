@@ -26,3 +26,7 @@ export const tutorPyodideSectionsPayloadSchema = z.object({
 });
 
 export type TutorPyodideSection = z.infer<typeof tutorPyodideSectionSchema>;
+
+export const SHOW_PYODIDE_SECTIONS_TOOL_NAME = "show_pyodide_sections" as const;
+export const SHOW_PYODIDE_SECTIONS_PART_TYPE =
+  `tool-${SHOW_PYODIDE_SECTIONS_TOOL_NAME}` as const;
