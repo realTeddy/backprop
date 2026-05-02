@@ -2,38 +2,36 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getPyodide } from "@/lib/pyodide/kernel";
+import { createMessageSession } from "@/lib/pyodide/message-session";
+import type { TutorPyodideSection } from "@/lib/ai/tutor-inline-pyodide";
+import type { Status } from "./pyodide-cell";
 
-export type Status = "idle" | "loading" | "ready" | "running" | "error";
-
-export function PyodideCell(props: {
-  initialCode?: string;
-  packages?: string[];
+export function TutorInlinePyodideCell(props: {
+  session: ReturnType<typeof createMessageSession>;
+  section: TutorPyodideSection;
 }) {
-  const { initialCode = "", packages = [] } = props;
-  const [code, setCode] = useState(initialCode);
+  const { session, section } = props;
+  const [code, setCode] = useState(section.code);
   const [status, setStatus] = useState<Status>("idle");
   const [output, setOutput] = useState("");
   const [error, setError] = useState<string | null>(null);
   const stdoutRef = useRef<string>("");
 
   const ensureReady = useCallback(async () => {
-    const pyodide = await getPyodide();
-    pyodide.setStdout({
+    const kernel = await getPyodide();
+    kernel.setStdout({
       batched: (s: string) => {
         stdoutRef.current += s + "\n";
       },
     });
-    pyodide.setStderr({
+    kernel.setStderr({
       batched: (s: string) => {
         stdoutRef.current += s + "\n";
       },
     });
-    return pyodide;
+    return kernel;
   }, []);
 
-  // Warm Pyodide once the user mounts the cell. The tutor's first message
-  // typically takes long enough that the kernel finishes loading by the
-  // time the user is ready to run code.
   useEffect(() => {
     let cancelled = false;
     setStatus("loading");
@@ -56,11 +54,8 @@ export function PyodideCell(props: {
     setError(null);
     stdoutRef.current = "";
     try {
-      const pyodide = await ensureReady();
-      if (packages.length > 0 || /import\s/.test(code)) {
-        await pyodide.loadPackagesFromImports(code);
-      }
-      const value = await pyodide.runPythonAsync(code);
+      await ensureReady();
+      const value = await session.run(code);
       const tail =
         typeof value === "undefined" || value === null
           ? ""
@@ -74,11 +69,13 @@ export function PyodideCell(props: {
     }
   }
 
+  const runLabel = section.runLabel ?? "Run";
+
   return (
     <div className="space-y-2 rounded-lg border border-neutral-300 p-3 dark:border-neutral-700">
       <div className="flex items-center justify-between">
-        <span className="text-xs uppercase tracking-wider text-neutral-500">
-          Python (Pyodide)
+        <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+          {section.title}
         </span>
         <span className="text-xs text-neutral-500">
           {status === "loading" && "Loading kernel…"}
@@ -87,10 +84,15 @@ export function PyodideCell(props: {
           {status === "error" && "Error"}
         </span>
       </div>
+      {section.instructions && (
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          {section.instructions}
+        </p>
+      )}
       <textarea
         value={code}
         onChange={(e) => setCode(e.target.value)}
-        rows={Math.max(4, code.split("\n").length + 1)}
+        rows={Math.max(3, code.split("\n").length + 1)}
         spellCheck={false}
         className="w-full resize-y rounded border border-neutral-300 bg-neutral-50 p-3 font-mono text-xs leading-relaxed dark:border-neutral-700 dark:bg-neutral-950"
       />
@@ -101,7 +103,7 @@ export function PyodideCell(props: {
           disabled={status === "loading" || status === "running"}
           className="rounded-md bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-neutral-700 disabled:opacity-50 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200"
         >
-          Run
+          {runLabel}
         </button>
         <button
           type="button"

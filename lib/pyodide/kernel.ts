@@ -3,11 +3,17 @@
 const PYODIDE_VERSION = "0.27.2";
 const CDN_BASE = `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full`;
 
+type PyodideNamespace = unknown;
+
 type PyodideAPI = {
-  runPythonAsync: (code: string) => Promise<unknown>;
+  runPythonAsync: (
+    code: string,
+    opts?: { globals?: PyodideNamespace },
+  ) => Promise<unknown>;
   loadPackagesFromImports: (code: string) => Promise<void>;
   setStdout: (opts: { batched: (s: string) => void }) => void;
   setStderr: (opts: { batched: (s: string) => void }) => void;
+  createNamespace: () => Promise<PyodideNamespace>;
 };
 
 type LoadPyodide = (opts: { indexURL: string }) => Promise<PyodideAPI>;
