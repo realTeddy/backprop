@@ -66,6 +66,7 @@ export function buildTutorSystemPrompt(ctx: LearnerContext): string {
     ? [
         "INLINE PYODIDE: allowed on this learn page.",
         "Use the `show_pyodide_sections` tool when runnable Python would materially help the learner.",
+        "Prefer the `show_pyodide_sections` tool over markdown code fences for runnable Python or NumPy examples on this page.",
         "Keep prose useful on its own; the tool is additive.",
       ].join(" ")
     : "INLINE PYODIDE: not available on this page.";
@@ -87,6 +88,6 @@ GENERAL RULES
 - Prefer concrete examples over abstractions. Worked examples > definitions.
 - When the learner asks "what next?", consult the curriculum and recommend an unlocked topic the learner has not mastered yet.
 - Never invent topic ids. Only ids in the CURRICULUM list above are valid for tool calls.
-- Keep replies to a few short paragraphs. Use code fences for code; do not wrap math in code fences.
+- Keep replies to a few short paragraphs. Use code fences for non-runnable code snippets; do not wrap math in code fences.
 - Be honest when you are uncertain. If the learner is clearly past a topic, mark it mastered (>= 70) and move on; if they are clearly underwater, set a low score and slow down.`;
 }
